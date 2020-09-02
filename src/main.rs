@@ -17,8 +17,8 @@ fn main() {
                     for t in &tokens {
                         println!("{:#?}", t);
                     }
-                    let ast_tree = parser::parse(tokens);
-                    println!("Ast : {:#?}", ast_tree);
+                    //let ast_tree = parser::parse(tokens);
+                    //println!("Ast : {:#?}", ast_tree);
                 },
                 Err(e) => eprintln!("{}", e),
             }

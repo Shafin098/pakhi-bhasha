@@ -449,28 +449,44 @@ mod tests {
     use crate::frontend::lexer::*;
 
     #[test]
-    fn consume_num_test() {
-        let digits_1 = vec!['২','৪', '৫'];
-        let digits_2 = vec!['২','৪', '৫', ' ', '২'];
-        let digits_3 = vec!['২','৪', '৫', '.', '২', '৩', '৬'];
-        let digits_4 = vec!['-', '২','৪', '৫', '.', '২', '৩', '৬'];
-        let digits_5 = vec!['০'];
+    fn consume_num_test_1() {
+        let digits_1 = vec!['২', '৪', '৫'];
 
         let (val, consumed) = consume_num(&digits_1, 0);
         assert_eq!(245.0, val);
         assert_eq!(3, consumed);
+    }
+
+    #[test]
+    fn consume_num_test_2() {
+        let digits_2 = vec!['২', '৪', '৫', ' ', '২'];
 
         let (val, consumed) = consume_num(&digits_2, 0);
         assert_eq!(245.0, val);
         assert_eq!(3, consumed);
+    }
+
+    #[test]
+    fn consume_num_test_3() {
+        let digits_3 = vec!['২', '৪', '৫', '.', '২', '৩', '৬'];
 
         let (val, consumed) = consume_num(&digits_3, 0);
         assert_eq!(245.236, val);
         assert_eq!(7, consumed);
+    }
+
+    #[test]
+    fn consume_num_test_4() {
+        let digits_4 = vec!['-', '২', '৪', '৫', '.', '২', '৩', '৬'];
 
         let (val, consumed) = consume_num(&digits_4, 0);
         assert_eq!(-245.236, val);
         assert_eq!(8, consumed);
+    }
+
+    #[test]
+    fn consume_num_test_5() {
+        let digits_5 = vec!['০'];
 
         let (val, consumed) = consume_num(&digits_5, 0);
         assert_eq!(0.0, val);
@@ -487,25 +503,34 @@ mod tests {
     }
 
     #[test]
-    fn keyword_test() {
+    fn keyword_test_1() {
         let kword: Vec<char> = "ফাং".chars().collect();
         let t = keyword(&kword, 0).unwrap();
         assert_eq!(TokenKind::Function, t.kind);
+    }
 
+    #[test]
+    fn keyword_test_2() {
         let kword: Vec<char> = "নাম".chars().collect();
         let t = keyword(&kword, 0).unwrap();
         assert_eq!(TokenKind::Var, t.kind);
+    }
 
+    #[test]
+    fn keyword_test_3() {
         let kword: Vec<char> = "লুপ".chars().collect();
         let t = keyword(&kword, 0).unwrap();
         assert_eq!(TokenKind::Loop, t.kind);
+    }
 
+    #[test]
+    fn keyword_test_4() {
         let kword: Vec<char> = "abc".chars().collect();
         assert!(keyword(&kword, 0).is_none());
     }
 
     #[test]
-    fn tokenize_test() {
+    fn tokenize_test_1() {
         let tokens = tokenize("নাম ল = ০;".chars().collect::<Vec<char>>());
         assert_eq!(TokenKind::Var, tokens[0].kind);
         assert_eq!(TokenKind::Identifier, tokens[1].kind);
