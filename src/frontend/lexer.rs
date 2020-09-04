@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use unicode_normalization::UnicodeNormalization;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
@@ -373,7 +375,7 @@ fn consume_string(src: &Vec<char>, start: usize) -> (String, usize) {
     // adding extra 2 for first " and last "
     consumed += 2;
 
-    (val, consumed)
+    (val.nfc().collect(), consumed)
 }
 
 fn consume_identifier(src: &Vec<char>, start: usize, line: u32) -> (Token, usize) {

@@ -4,7 +4,20 @@ use crate::frontend::lexer::TokenKind;
 #[derive(Debug, PartialEq)]
 pub enum Stmt {
     Print(Expr),
-    Assignment,
+    Assignment(Assignment),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Assignment {
+    pub kind: AssignmentKind,
+    pub var_name: Token,
+    pub init_value: Option<Expr>,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AssignmentKind {
+    FirstAssignment,
+    Reassignment,
 }
 
 #[derive(Debug, PartialEq)]
@@ -86,11 +99,82 @@ impl Parser {
     fn statements(&mut self) -> Stmt {
         match self.tokens[self.current].kind {
             TokenKind::Print => self.print_stmt(),
-            _ => panic!("Err at line: {}", self.tokens[self.current].line),
+            TokenKind::Var | TokenKind::Identifier => self.assignment_stmt(),
+            _ => panic!("Err at line: {}\nDebug token{:#?}",
+                        self.tokens[self.current].line, self.tokens[self.current]),
         }
     }
 
+    fn assignment_stmt(&mut self) -> Stmt {
+        if self.tokens[self.current].kind == TokenKind::Identifier {
+            // reassigning any expression to a previously created variable
+            return self.re_assignment_stmt();
+        }
+
+        // consuming var token
+        self.current += 1;
+        if self.tokens[self.current].kind != TokenKind::Identifier {
+            panic!("Error at line: {}\nExpected a Identifier", self.tokens[self.current].line);
+        }
+
+        let var_name = self.tokens[self.current].clone();
+
+        // consuming identifier and '=' token
+        self.current += 2;
+
+        let stmt;
+        if self.tokens[self.current].kind == TokenKind::Semicolon {
+            // no value provided to initialize variable
+            stmt = Stmt::Assignment(Assignment {
+                kind: AssignmentKind::FirstAssignment,
+                var_name,
+                init_value: None,
+            });
+        } else {
+            let expr = self.expression();
+            stmt = Stmt::Assignment(Assignment {
+                kind: AssignmentKind::FirstAssignment,
+                var_name,
+                init_value: Some(expr),
+            });
+        }
+
+        if self.tokens[self.current].kind != TokenKind::Semicolon {
+            panic!("Error at line: {}\nExpected a ;", self.tokens[self.current].line);
+        }
+        // consuming ; token
+        self.current += 1;
+
+        stmt
+    }
+
+    fn re_assignment_stmt(&mut self) -> Stmt {
+        let var_name = self.tokens[self.current].clone();
+        // consuming Identifier token
+        self.current += 1;
+
+        if self.tokens[self.current].kind != TokenKind::Equal {
+           panic!("Expected '=' at line {}", self.tokens[self.current].line);
+        }
+        // consuming '=' token
+        self.current += 1;
+
+        let expr = self.expression();
+
+        // consuming ; token
+        self.current += 1;
+
+        let stmt = Stmt::Assignment(Assignment {
+            kind: AssignmentKind::Reassignment,
+            var_name,
+            init_value: Some(expr),
+        });
+
+        stmt
+    }
+
     fn print_stmt(&mut self) -> Stmt {
+        // consuming print token
         self.current += 1;
         let expr = self.expression();
         //consuming last ';' of print statement
@@ -234,7 +318,12 @@ impl Parser {
         if self.tokens[self.current].kind != TokenKind::ParenEnd {
             loop {
                 arguments.push(self.expression());
-                if self.tokens[self.current].kind != TokenKind::Comma {
+                if self.tokens[self.current].kind == TokenKind::Comma {
+                    // consuming , token
+                    self.current += 1;
+                } else {
+                    // no comma means all arguments consumed, so breaking out of
+                    // arguments consuming loop
                     break;
                 }
             }
@@ -285,11 +374,12 @@ impl Parser {
             TokenKind::ParenStart => {
                 self.current += 1;
                 let expr = self.expression();
-                // consuming parenEnd '}'
+                // consuming parenEnd ')'
                 self.current += 1;
                 return  Expr::Primary(Primary::Group(Box::new(expr)));
             },
-            _ => panic!("Error at line: {}", self.tokens[self.current].line),
+            _ => panic!("Error at line: {}\n Debug Token: {:#?}",
+                        self.tokens[self.current].line, self.tokens[self.current]),
         }
     }
 }

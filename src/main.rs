@@ -14,11 +14,11 @@ fn main() {
                     println!("{}", src_string);
                     let src_chars: Vec<char> = src_string.chars().collect();
                     let tokens = lexer::tokenize(src_chars);
-                    for t in &tokens {
-                        println!("{:#?}", t);
-                    }
-                    //let ast_tree = parser::parse(tokens);
-                    //println!("Ast : {:#?}", ast_tree);
+                    //for t in &tokens {
+                    //    println!("{:#?}", t);
+                    //}
+                    let ast_tree = parser::parse(tokens);
+                    println!("Ast : {:#?}", ast_tree);
                 },
                 Err(e) => eprintln!("{}", e),
             }
