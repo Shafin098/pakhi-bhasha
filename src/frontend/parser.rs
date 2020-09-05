@@ -1,26 +1,29 @@
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
     Print(Expr),
     Assignment(Assignment),
+    Expression(Expr),
+    EOS,    // represents end of statement, only needed for interpreting to indicate
+            // all previous statements were consumed
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Assignment {
     pub kind: AssignmentKind,
     pub var_name: Token,
     pub init_value: Option<Expr>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AssignmentKind {
     FirstAssignment,
     Reassignment,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Or(Or),
     And(And),
@@ -33,7 +36,7 @@ pub enum Expr {
     Primary(Primary),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Primary {
     Bool(bool),
     Num(f64),
@@ -42,32 +45,32 @@ pub enum Primary {
     Group(Box<Expr>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Or {
     pub left: Box<Expr>,
     pub right: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct And {
     pub left: Box<Expr>,
     pub right: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Binary {
     pub operator: TokenKind,
     pub left: Box<Expr>,
     pub right: Box<Expr>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Unary {
     pub operator: TokenKind,
     pub right: Box<Expr>
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionCall {
     pub expr: Box<Expr>,
     pub arguments: Vec<Expr>,
@@ -92,6 +95,7 @@ impl Parser {
         while self.tokens[self.current].kind != TokenKind::EOT {
             statements.push(self.statements());
         }
+        statements.push(Stmt::EOS);
 
         statements
     }
@@ -99,18 +103,14 @@ impl Parser {
     fn statements(&mut self) -> Stmt {
         match self.tokens[self.current].kind {
             TokenKind::Print => self.print_stmt(),
-            TokenKind::Var | TokenKind::Identifier => self.assignment_stmt(),
+            TokenKind::Var => self.assignment_stmt(),
+            TokenKind::Identifier => self.re_assignment_stmt(),
             _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
     }
 
     fn assignment_stmt(&mut self) -> Stmt {
-        if self.tokens[self.current].kind == TokenKind::Identifier {
-            // reassigning any expression to a previously created variable
-            return self.re_assignment_stmt();
-        }
-
         // consuming var token
         self.current += 1;
         if self.tokens[self.current].kind != TokenKind::Identifier {
@@ -149,6 +149,10 @@ impl Parser {
     }
 
     fn re_assignment_stmt(&mut self) -> Stmt {
+        if self.tokens[self.current+1].kind != TokenKind::Equal {
+            return self.expression_stmt();
+        }
+
         let var_name = self.tokens[self.current].clone();
         // consuming Identifier token
         self.current += 1;
@@ -171,6 +175,10 @@ impl Parser {
         });
 
         stmt
+    }
+
+    fn expression_stmt(&mut self) -> Stmt {
+       Stmt::Expression(self.expression())
     }
 
     fn print_stmt(&mut self) -> Stmt {
@@ -386,8 +394,8 @@ impl Parser {
 
 // --------------------------------------------
 pub fn parse(tokens: Vec<Token>) -> Vec<Stmt> {
-    let mut p = Parser::new(tokens);
-    p.parse()
+    let mut parser = Parser::new(tokens);
+    parser.parse()
 }
 
 #[cfg(test)]
@@ -549,6 +557,40 @@ mod tests {
             operator: TokenKind::Not,
             right: Box::from(Expr::Primary(Primary::Bool(true))),
         }));
+
+        assert_eq!(expected_ast, ast[0]);
+    }
+
+    #[test]
+    fn parse_test_assignment_1() {
+        let tokens = lexer::tokenize("নাম ল = \"red\";".chars().collect());
+        let ast = parse(tokens);
+        let expected_ast = Stmt::Assignment(Assignment {
+            kind: AssignmentKind::FirstAssignment,
+            var_name: Token {
+                kind: TokenKind::Identifier,
+                lexeme: vec!['ল'],
+                line: 1,
+            },
+            init_value: Some(Expr::Primary(Primary::String("red".to_string()))),
+        });
+
+        assert_eq!(expected_ast, ast[0]);
+    }
+
+    #[test]
+    fn parse_test_re_assignment_1() {
+        let tokens = lexer::tokenize("ল = \"red\";".chars().collect());
+        let ast = parse(tokens);
+        let expected_ast = Stmt::Assignment(Assignment {
+            kind: AssignmentKind::Reassignment,
+            var_name: Token {
+                kind: TokenKind::Identifier,
+                lexeme: vec!['ল'],
+                line: 1,
+            },
+            init_value: Some(Expr::Primary(Primary::String("red".to_string()))),
+        });
 
         assert_eq!(expected_ast, ast[0]);
     }

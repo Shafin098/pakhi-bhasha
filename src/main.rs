@@ -4,6 +4,7 @@ use std::io;
 
 use p::lexer;
 use p::parser;
+use p::interpreter;
 
 fn main() {
     match src_path() {
@@ -18,7 +19,12 @@ fn main() {
                     //    println!("{:#?}", t);
                     //}
                     let ast_tree = parser::parse(tokens);
-                    println!("Ast : {:#?}", ast_tree);
+                    //println!("Ast : {:#?}", ast_tree);
+
+                    println!();
+                    println!("Interpreter");
+                    println!("____________");
+                    interpreter::run(ast_tree);
                 },
                 Err(e) => eprintln!("{}", e),
             }
