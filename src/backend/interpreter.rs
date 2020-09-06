@@ -1,9 +1,9 @@
-use crate::frontend::parser;
 use std::collections::HashMap;
+use crate::frontend::parser;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
-use crate::frontend::parser::Stmt::Expression;
 
+#[derive(Debug, Clone)]
 enum ExprResult {
     Num(f64),
     Bool(bool),
@@ -13,7 +13,7 @@ enum ExprResult {
 struct Interpreter {
     current: usize,
     statements: Vec<parser::Stmt>,
-    environment: HashMap<String, Option<parser::Expr>>
+    environment: HashMap<String, Option<ExprResult>>
 }
 
 impl Interpreter {
@@ -50,23 +50,39 @@ impl Interpreter {
 
     fn interpret_assign_stmt(&mut self, assign_stmt: parser::Assignment) {
         let var_key: String = assign_stmt.var_name.lexeme.clone().into_iter().collect();
+
         if assign_stmt.kind == parser::AssignmentKind::Reassignment {
             if self.environment.contains_key(&var_key) {
-                self.environment.insert(var_key.clone(), assign_stmt.init_value.clone());
+                let init_value = self.interpret_expr(assign_stmt.init_value.clone().unwrap());
+                self.environment.insert(var_key.clone(), Some(init_value));
             } else {
                 panic!("Variable {:#?} wasn't initialized", assign_stmt.var_name.lexeme);
             }
         }
 
-        self.current += 1;
+        if assign_stmt.kind == parser::AssignmentKind::FirstAssignment {
+            match assign_stmt.init_value {
+                Some(expr) => {
+                    let init_value = self.interpret_expr(expr);
+                    self.environment.insert(var_key.clone(), Some(init_value));
+                },
+                _ => {
+                    self.environment.insert(var_key.clone(), None);
+                },
+            }
+        }
 
-        self.environment.insert(var_key.clone(), assign_stmt.init_value);
+        self.current += 1;
     }
 
     fn interpret_expr(&mut self, expr: parser::Expr) -> ExprResult {
         match expr {
             parser::Expr::Primary(p) => self.interpret_primary_expr(p),
-            parser::Expr::Unary(u_expr) => self.interpret_unary_expr(u_expr),
+            parser::Expr::Unary(u_expr) => {
+                //println!("unary = {:#?}", u_expr);
+                //println!("unary_right = {:#?}", *u_expr.right);
+                self.interpret_unary_expr(u_expr)
+            },
             _ => panic!("Expr interpretation not implemented\n Debug Expr: {:#?}", expr)
         }
     }
@@ -78,7 +94,7 @@ impl Interpreter {
             parser::Primary::Bool(b) => ExprResult::Bool(b),
             parser::Primary::Var(v) => self.interpret_var(v),
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
-            _ => panic!("Primary interpretation not implemented\n Debug Primary: {:#?}", p),
+            //_ => panic!("Primary interpretation not implemented\n Debug Primary: {:#?}", p),
         }
     }
 
@@ -103,11 +119,9 @@ impl Interpreter {
 
     fn interpret_var(&mut self, v: Token) -> ExprResult {
         let var_key: String = v.lexeme.clone().into_iter().collect();
-        let var_expression = self.environment.get(&var_key).unwrap();
-        match var_expression.clone() {
-            Some(expr) => {
-                return self.interpret_expr(expr)
-            },
+        let expr_result = self.environment.get(&*var_key).unwrap();
+        match expr_result {
+            Some(var_value) => var_value.clone(),
             None => panic!("Variable wasn't initialized {:#?}", v.lexeme),
         }
     }
