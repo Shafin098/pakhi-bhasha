@@ -29,8 +29,8 @@ pub enum Expr {
     And(And),
     Equality(Binary),
     Comparison(Binary),
-    Addition(Binary),
-    Multiplication(Binary),
+    AddOrSub(Binary),
+    MulOrDiv(Binary),
     Unary(Unary),
     Call(FunctionCall),
     Primary(Primary),
@@ -105,6 +105,7 @@ impl Parser {
             TokenKind::Print => self.print_stmt(),
             TokenKind::Var => self.assignment_stmt(),
             TokenKind::Identifier => self.re_assignment_stmt(),
+            //TokenKind::If => self.if_statement(),
             _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
@@ -178,7 +179,7 @@ impl Parser {
     }
 
     fn expression_stmt(&mut self) -> Stmt {
-       Stmt::Expression(self.expression())
+        Stmt::Expression(self.expression())
     }
 
     fn print_stmt(&mut self) -> Stmt {
@@ -274,7 +275,7 @@ impl Parser {
             let operator = self.tokens[self.current].kind.clone();
             self.current += 1;
             let right = self.multiplication();
-            expr = Expr::Addition(Binary {
+            expr = Expr::AddOrSub(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
@@ -293,7 +294,7 @@ impl Parser {
             let operator = self.tokens[self.current].kind.clone();
             self.current += 1;
             let right = self.unary();
-            expr = Expr::Multiplication(Binary {
+            expr = Expr::MulOrDiv(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
@@ -415,7 +416,7 @@ mod tests {
     fn parse_test_2() {
         let tokens = lexer::tokenize("দেখাও -৫৩.৬ + ৬;".chars().collect());
         let ast = parse(tokens);
-        let expected_ast = Stmt::Print(Expr::Addition(Binary {
+        let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
             operator: TokenKind::Plus,
             left: Box::new(Expr::Primary(Primary::Num(-53.6))),
             right: Box::new(Expr::Primary(Primary::Num(6.0))),
@@ -435,10 +436,10 @@ mod tests {
     fn parse_test_4() {
         let tokens = lexer::tokenize("দেখাও ১ + ৩ * ২;".chars().collect());
         let ast = parse(tokens);
-        let expected_ast = Stmt::Print(Expr::Addition(Binary {
+        let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
             operator: TokenKind::Plus,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
-            right: Box::from(Expr::Multiplication(Binary {
+            right: Box::from(Expr::MulOrDiv(Binary {
                 operator: TokenKind::Multiply,
                 left: Box::from(Expr::Primary(Primary::Num(3.0))),
                 right: Box::from(Expr::Primary(Primary::Num(2.0))),

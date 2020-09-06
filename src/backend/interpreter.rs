@@ -3,7 +3,7 @@ use crate::frontend::parser;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum ExprResult {
     Num(f64),
     Bool(bool),
@@ -52,8 +52,9 @@ impl Interpreter {
         let var_key: String = assign_stmt.var_name.lexeme.clone().into_iter().collect();
 
         if assign_stmt.kind == parser::AssignmentKind::Reassignment {
-            if self.environment.contains_key(&var_key) {
-                let init_value = self.interpret_expr(assign_stmt.init_value.clone().unwrap());
+            if self.environment.contains_key(&var_key) && assign_stmt.init_value.is_some() {
+                let init_expr = assign_stmt.init_value.clone().unwrap();
+                let init_value = self.interpret_expr(init_expr);
                 self.environment.insert(var_key.clone(), Some(init_value));
             } else {
                 panic!("Variable {:#?} wasn't initialized", assign_stmt.var_name.lexeme);
@@ -78,11 +79,13 @@ impl Interpreter {
     fn interpret_expr(&mut self, expr: parser::Expr) -> ExprResult {
         match expr {
             parser::Expr::Primary(p) => self.interpret_primary_expr(p),
-            parser::Expr::Unary(u_expr) => {
-                //println!("unary = {:#?}", u_expr);
-                //println!("unary_right = {:#?}", *u_expr.right);
-                self.interpret_unary_expr(u_expr)
-            },
+            parser::Expr::Unary(u_expr) => self.interpret_unary_expr(u_expr),
+            parser::Expr::And(and_expr) => self.interpret_and_expr(and_expr),
+            parser::Expr::Or(or_expr) => self.interpret_or_expr(or_expr),
+            parser::Expr::Equality(eq_expr) => self.interpret_eq_expr(eq_expr),
+            parser::Expr::Comparison(comp_expr) => self.interpret_comp_expr(comp_expr),
+            parser::Expr::AddOrSub(addsub_expr) => self.interpret_addsub_expr(addsub_expr),
+            parser::Expr::MulOrDiv(muldiv_expr) => self.interpret_muldiv_expr(muldiv_expr),
             _ => panic!("Expr interpretation not implemented\n Debug Expr: {:#?}", expr)
         }
     }
@@ -114,6 +117,97 @@ impl Interpreter {
                 panic!("Unsupported operation on type");
             },
             _ => panic!("Unsupported operation on type")
+        }
+    }
+
+    fn interpret_and_expr(&mut self, and_expr: parser::And) -> ExprResult {
+        let right_expr_val = self.interpret_expr(*and_expr.right);
+        let left_expr_val = self.interpret_expr(*and_expr.left);
+
+        if let ExprResult::Bool(right)  = right_expr_val {
+           if let ExprResult::Bool(left) = left_expr_val {
+               return ExprResult::Bool(right && left);
+           }
+        }
+
+        panic!("Unsupported operation on type");
+    }
+
+    fn interpret_or_expr(&mut self, or_expr: parser::Or) -> ExprResult {
+        let right_expr_val = self.interpret_expr(*or_expr.right);
+        let left_expr_val = self.interpret_expr(*or_expr.left);
+
+        if let ExprResult::Bool(right)  = right_expr_val {
+            if let ExprResult::Bool(left) = left_expr_val {
+                return ExprResult::Bool(right || left);
+            }
+        }
+
+        panic!("Unsupported operation on type");
+    }
+
+    fn interpret_addsub_expr(&mut self, addsub_expr: parser::Binary) -> ExprResult {
+        let right_expr_val = self.interpret_expr(*addsub_expr.right);
+        let left_expr_val = self.interpret_expr(*addsub_expr.left);
+
+        if let ExprResult::Num(right)  = right_expr_val {
+            if let ExprResult::Num(left) = left_expr_val {
+                match addsub_expr.operator {
+                    TokenKind::Plus => return ExprResult::Num(left + right),
+                    TokenKind::Minus => return ExprResult::Num(left - right),
+                    _ => panic!(),
+                }
+            }
+        }
+
+        panic!("Unsupported operation on type");
+    }
+
+    fn interpret_muldiv_expr(&mut self, muldiv_expr: parser::Binary) -> ExprResult {
+        let right_expr_val = self.interpret_expr(*muldiv_expr.right);
+        let left_expr_val = self.interpret_expr(*muldiv_expr.left);
+
+        if let ExprResult::Num(right)  = right_expr_val {
+            if let ExprResult::Num(left) = left_expr_val {
+                match muldiv_expr.operator {
+                    TokenKind::Multiply => return ExprResult::Num(left * right),
+                    TokenKind::Division => return ExprResult::Num(left / right),
+                    _ => panic!(),
+                }
+            }
+        }
+
+        panic!("Unsupported operation on type");
+    }
+
+    fn interpret_eq_expr(&mut self, eq_expr: parser::Binary) -> ExprResult {
+        let right_expr_val = self.interpret_expr(*eq_expr.right);
+        let left_expr_val = self.interpret_expr(*eq_expr.left);
+
+        match eq_expr.operator {
+            TokenKind::EqualEqual => ExprResult::Bool(right_expr_val == left_expr_val),
+            TokenKind::NotEqual =>  ExprResult::Bool(right_expr_val != left_expr_val),
+            _ => panic!()
+        }
+    }
+
+    fn interpret_comp_expr(&mut self, comp_expr: parser::Binary) -> ExprResult {
+        let right_expr_val = self.interpret_expr(*comp_expr.right);
+        let left_expr_val = self.interpret_expr(*comp_expr.left);
+
+        if let ExprResult::Bool(_b) = right_expr_val {
+            if let ExprResult::Bool(_b) = left_expr_val {
+                panic!();
+            }
+            panic!();
+        }
+
+        match comp_expr.operator {
+            TokenKind::GreaterThan => ExprResult::Bool(left_expr_val > right_expr_val),
+            TokenKind::GreaterThanOrEqual =>  ExprResult::Bool(left_expr_val >= right_expr_val),
+            TokenKind::LessThan =>  ExprResult::Bool(left_expr_val < right_expr_val),
+            TokenKind::LessThanOrEqual =>  ExprResult::Bool(left_expr_val <= right_expr_val),
+            _ => panic!()
         }
     }
 
