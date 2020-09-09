@@ -13,6 +13,7 @@ pub enum TokenKind {
     String(String),
     Identifier,
     If,
+    Else,
     Loop,
     Var,
     Function,
@@ -410,6 +411,7 @@ fn keyword(char_vec: &Vec<char>, line: u32) -> Option<Token> {
     let mut keyword_map: HashMap<Vec<char>, TokenKind> = HashMap::new();
     keyword_map.insert("নাম".chars().collect(), TokenKind::Var);
     keyword_map.insert("যদি".chars().collect(), TokenKind::If);
+    keyword_map.insert("অথবা".chars().collect(), TokenKind::Else);
     keyword_map.insert("লুপ".chars().collect(), TokenKind::Loop);
     keyword_map.insert("ফাং".chars().collect(), TokenKind::Function);
     keyword_map.insert("থামো".chars().collect(), TokenKind::Break);

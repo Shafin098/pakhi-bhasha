@@ -14,6 +14,7 @@ struct Interpreter {
     current: usize,
     statements: Vec<parser::Stmt>,
     envs: Vec<HashMap<String, Option<ExprResult>>>,
+    previous_if_was_executed: Vec<bool>,
 }
 
 impl Interpreter {
@@ -22,6 +23,7 @@ impl Interpreter {
             current: 0,
             statements,
             envs: vec![HashMap::new()],
+            previous_if_was_executed: Vec::new(),
         }
     }
 
@@ -35,15 +37,15 @@ impl Interpreter {
         match self.statements[self.current].clone() {
             parser::Stmt::Print(expr) => self.interpret_print_stmt(expr),
             parser::Stmt::Assignment(assign_stmt) => self.interpret_assign_stmt(assign_stmt),
+            parser::Stmt::If(cond_expr) => self.interpret_if_stmt(cond_expr),
+            parser::Stmt::Else => self.interpret_else_stmt(),
             parser::Stmt::BlockStart => {
                 self.current += 1;
-
                 // creating new scope
                 self.envs.push(HashMap::new());
             },
             parser::Stmt::BlockEnd => {
                 self.current += 1;
-
                 // BlockEnd means all statements in this blocks scope were interpreted
                 // so destroying scope created by Stmt::BlockStart
                 self.envs.pop();
@@ -101,6 +103,68 @@ impl Interpreter {
         }
 
         self.current += 1;
+    }
+
+    fn interpret_if_stmt(&mut self, expr: parser::Expr) {
+        // consuming if token
+        self.current += 1;
+
+        let if_condition_expr = self.interpret_expr(expr);
+
+        if let ExprResult::Bool(condition) = if_condition_expr {
+            if condition == false {
+                self.previous_if_was_executed.push(false);
+                // condition expression of if statement is false so skipping next block statement
+                self.skip_stmt_block();
+            } else {
+                self.previous_if_was_executed.push(true);
+            }
+        } else { panic!("If condition expression must evaluate to boolean value") }
+
+    }
+
+    fn interpret_else_stmt(&mut self) {
+        assert!(self.previous_if_was_executed.len() > 0);
+
+        // consuming else token
+        self.current += 1;
+
+        let last_if_condition_index = self.previous_if_was_executed.len() - 1;
+        if self.previous_if_was_executed[last_if_condition_index] {
+            self.skip_stmt_block();
+        }
+        self.previous_if_was_executed.pop();
+    }
+
+    fn skip_stmt_block(&mut self) {
+        let mut stack: Vec<char> = Vec::new();
+
+        loop {
+            if self.statements[self.current] == parser::Stmt::BlockStart {
+                stack.push('{');
+            }
+
+            if self.statements[self.current] == parser::Stmt::BlockEnd {
+                let previous = stack.pop();
+                match previous {
+                    Some(_) => {
+                        if stack.len() == 0 {
+                            // consuming Stmt::BlockEnd
+                            self.current += 1;
+                            break;
+                        }
+                    },
+                    None => panic!("Syntax error"),
+                }
+            }
+
+            // skipping statements in block of if
+            self.current += 1;
+        }
+
+        if self.statements[self.current] != parser::Stmt::Else {
+            self.previous_if_was_executed.pop();
+        }
     }
 
     fn interpret_expr(&mut self, expr: parser::Expr) -> ExprResult {

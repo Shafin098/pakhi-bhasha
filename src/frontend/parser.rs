@@ -8,6 +8,8 @@ pub enum Stmt {
     Expression(Expr),
     BlockStart,
     BlockEnd,
+    If(Expr),
+    Else,
     EOS,    // represents end of statement, only needed for interpreting to indicate
             // all previous statements were consumed
 }
@@ -109,7 +111,8 @@ impl Parser {
             TokenKind::Identifier => self.re_assignment_stmt(),
             TokenKind::CurlyBraceStart => self.block_start(),
             TokenKind::CurlyBraceEnd => self.block_end(),
-            //TokenKind::If => self.if_statement(),
+            TokenKind::If => self.if_statement(),
+            TokenKind::Else => self.else_statement(),
             _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
@@ -208,6 +211,22 @@ impl Parser {
         self.current += 1;
 
         Stmt::BlockEnd
+    }
+
+    fn if_statement(&mut self) -> Stmt {
+        //consuming if token
+        self.current += 1;
+
+        let condition = self.expression();
+
+        Stmt::If(condition)
+    }
+
+    fn else_statement(&mut self) -> Stmt {
+        //consuming else token
+        self.current += 1;
+
+        Stmt::Else
     }
 
     fn expression(&mut self) -> Expr {
