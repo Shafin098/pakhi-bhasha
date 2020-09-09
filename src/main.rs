@@ -2,9 +2,9 @@ use std::env;
 use std::fs;
 use std::io;
 
-use p::lexer;
-use p::parser;
-use p::interpreter;
+use pakhi::lexer;
+use pakhi::parser;
+use pakhi::interpreter;
 
 fn main() {
     match src_path() {
@@ -19,7 +19,7 @@ fn main() {
                     //    println!("{:#?}", t);
                     //}
                     let ast_tree = parser::parse(tokens);
-                    //println!("Ast : {:#?}", ast_tree);
+                    // println!("Ast : {:#?}", ast_tree);
 
                     println!();
                     println!("Interpreter");

@@ -13,7 +13,7 @@ enum ExprResult {
 struct Interpreter {
     current: usize,
     statements: Vec<parser::Stmt>,
-    environment: HashMap<String, Option<ExprResult>>
+    envs: Vec<HashMap<String, Option<ExprResult>>>,
 }
 
 impl Interpreter {
@@ -21,7 +21,7 @@ impl Interpreter {
         Interpreter {
             current: 0,
             statements,
-            environment: HashMap::new(),
+            envs: vec![HashMap::new()],
         }
     }
 
@@ -35,6 +35,19 @@ impl Interpreter {
         match self.statements[self.current].clone() {
             parser::Stmt::Print(expr) => self.interpret_print_stmt(expr),
             parser::Stmt::Assignment(assign_stmt) => self.interpret_assign_stmt(assign_stmt),
+            parser::Stmt::BlockStart => {
+                self.current += 1;
+
+                // creating new scope
+                self.envs.push(HashMap::new());
+            },
+            parser::Stmt::BlockEnd => {
+                self.current += 1;
+
+                // BlockEnd means all statements in this blocks scope were interpreted
+                // so destroying scope created by Stmt::BlockStart
+                self.envs.pop();
+            }
             _ => panic!("Interpreter error\n Debug Statement {:#?}", self.statements[self.current]),
         }
     }
@@ -51,13 +64,22 @@ impl Interpreter {
     fn interpret_assign_stmt(&mut self, assign_stmt: parser::Assignment) {
         let var_key: String = assign_stmt.var_name.lexeme.clone().into_iter().collect();
 
+        let mut var_found_at_env_index: i32 = (self.envs.len() - 1) as i32;
         if assign_stmt.kind == parser::AssignmentKind::Reassignment {
-            if self.environment.contains_key(&var_key) && assign_stmt.init_value.is_some() {
-                let init_expr = assign_stmt.init_value.clone().unwrap();
-                let init_value = self.interpret_expr(init_expr);
-                self.environment.insert(var_key.clone(), Some(init_value));
+            for env in self.envs.iter().rev() {
+                if env.contains_key(&var_key) && assign_stmt.init_value.is_some() {
+                    break;
+                } else {
+                    var_found_at_env_index -= 1;
+                }
+            }
+            let init_expr = assign_stmt.init_value.clone().unwrap();
+            let init_value = self.interpret_expr(init_expr);
+
+            if var_found_at_env_index < 0 {
+                panic!("Variable wasn't initialized {:#}", var_key);
             } else {
-                panic!("Variable {:#?} wasn't initialized", assign_stmt.var_name.lexeme);
+                self.envs[var_found_at_env_index as usize].insert(var_key.clone(), Some(init_value));
             }
         }
 
@@ -65,10 +87,15 @@ impl Interpreter {
             match assign_stmt.init_value {
                 Some(expr) => {
                     let init_value = self.interpret_expr(expr);
-                    self.environment.insert(var_key.clone(), Some(init_value));
+
+                    let env_i = self.envs.len() - 1;
+                    let current_env = &mut self.envs[env_i];
+                    current_env.insert(var_key.clone(), Some(init_value));
                 },
                 _ => {
-                    self.environment.insert(var_key.clone(), None);
+                    let env_i = self.envs.len() - 1;
+                    let current_env = &mut self.envs[env_i];
+                    current_env.insert(var_key.clone(), None);
                 },
             }
         }
@@ -213,11 +240,17 @@ impl Interpreter {
 
     fn interpret_var(&mut self, v: Token) -> ExprResult {
         let var_key: String = v.lexeme.clone().into_iter().collect();
-        let expr_result = self.environment.get(&*var_key).unwrap();
-        match expr_result {
-            Some(var_value) => var_value.clone(),
-            None => panic!("Variable wasn't initialized {:#?}", v.lexeme),
+
+        for env in self.envs.iter_mut().rev() {
+            let expr_result = env.get(&*var_key);
+            if expr_result.is_some() {
+                match expr_result.unwrap() {
+                    Some(var_value) => return var_value.clone(),
+                    None => panic!("Variable wasn't initialized {:#?}", v.lexeme),
+                }
+            }
         }
+        panic!("Variable wasn't initialized {:#?}", v.lexeme);
     }
 
     fn to_bn_num(&self, n: f64) -> String {
