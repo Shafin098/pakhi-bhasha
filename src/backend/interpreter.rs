@@ -10,9 +10,17 @@ enum ExprResult {
     String(String),
 }
 
+#[derive(Debug)]
+struct LoopEnv {
+    start: usize,
+    // this is needed to destroy envs created inside loop when using continue or break
+    total_envs_at_loop_creation: usize,
+}
+
 struct Interpreter {
     current: usize,
     statements: Vec<parser::Stmt>,
+    loops: Vec<LoopEnv>,
     envs: Vec<HashMap<String, Option<ExprResult>>>,
     previous_if_was_executed: Vec<bool>,
 }
@@ -22,6 +30,7 @@ impl Interpreter {
         Interpreter {
             current: 0,
             statements,
+            loops: Vec::new(),
             envs: vec![HashMap::new()],
             previous_if_was_executed: Vec::new(),
         }
@@ -39,6 +48,58 @@ impl Interpreter {
             parser::Stmt::Assignment(assign_stmt) => self.interpret_assign_stmt(assign_stmt),
             parser::Stmt::If(cond_expr) => self.interpret_if_stmt(cond_expr),
             parser::Stmt::Else => self.interpret_else_stmt(),
+            parser::Stmt::Loop => {
+                // consuming loop
+                self.current += 1;
+
+                // saving loop start to reuse in continue statement
+                self.loops.push(LoopEnv { start: self.current, total_envs_at_loop_creation: self.envs.len()});
+
+            },
+            parser::Stmt::Continue => {
+                // destroying envs that was created inside loop
+                let last_loop_env_index = self.loops.len() - 1;
+                let total_envs_created_inside_loop = self.envs.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
+                for _ in 0..total_envs_created_inside_loop {
+                    self.envs.pop();
+                }
+
+                let loop_start = self.loops[last_loop_env_index].start;
+
+                self.current = loop_start;
+            },
+            parser::Stmt::Break => {
+                self.current += 1;
+
+                // destroying envs that was created inside loop
+                let last_loop_env_index = self.loops.len() - 1;
+
+                let total_envs_created_inside_loop = self.envs.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
+                for _ in 0..total_envs_created_inside_loop {
+                    self.envs.pop();
+                }
+                // destroying loop env
+                self.loops.pop();
+
+                let mut stack: Vec<char> = Vec::new();
+                loop {
+                    if self.statements[self.current] == parser::Stmt::Loop {
+                        stack.push('{');
+                    }
+
+                    if self.statements[self.current] == parser::Stmt::Continue {
+                        stack.pop();
+                        if stack.len() == 0 {
+                            // consuming Stmt::Continue
+                            self.current += 1;
+                            break;
+                        }
+                    }
+
+                    // skipping statements in block of loop
+                    self.current += 1;
+                }
+            },
             parser::Stmt::BlockStart => {
                 self.current += 1;
                 // creating new scope
@@ -115,7 +176,7 @@ impl Interpreter {
             if condition == false {
                 self.previous_if_was_executed.push(false);
                 // condition expression of if statement is false so skipping next block statement
-                self.skip_stmt_block();
+                self.skip_block_in_if();
             } else {
                 self.previous_if_was_executed.push(true);
             }
@@ -131,12 +192,12 @@ impl Interpreter {
 
         let last_if_condition_index = self.previous_if_was_executed.len() - 1;
         if self.previous_if_was_executed[last_if_condition_index] {
-            self.skip_stmt_block();
+            self.skip_block_in_if();
         }
         self.previous_if_was_executed.pop();
     }
 
-    fn skip_stmt_block(&mut self) {
+    fn skip_block_in_if(&mut self) {
         let mut stack: Vec<char> = Vec::new();
 
         loop {

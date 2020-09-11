@@ -9,6 +9,9 @@ pub enum Stmt {
     BlockStart,
     BlockEnd,
     If(Expr),
+    Loop,
+    Continue,
+    Break,
     Else,
     EOS,    // represents end of statement, only needed for interpreting to indicate
             // all previous statements were consumed
@@ -113,6 +116,9 @@ impl Parser {
             TokenKind::CurlyBraceEnd => self.block_end(),
             TokenKind::If => self.if_statement(),
             TokenKind::Else => self.else_statement(),
+            TokenKind::Loop => self.loop_stmt(),
+            TokenKind::Continue => self.continue_stmt(),
+            TokenKind::Break => self.break_stmt(),
             _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
@@ -211,6 +217,27 @@ impl Parser {
         self.current += 1;
 
         Stmt::BlockEnd
+    }
+
+    fn loop_stmt(&mut self) -> Stmt {
+        // consuming loop token
+        self.current += 1;
+
+        Stmt::Loop
+    }
+
+    fn continue_stmt(&mut self) -> Stmt {
+        // consuming loop token
+        self.current += 2;
+
+        Stmt::Continue
+    }
+
+    fn break_stmt(&mut self) -> Stmt {
+        // consuming break and ; token
+        self.current += 2;
+
+        Stmt::Break
     }
 
     fn if_statement(&mut self) -> Stmt {
