@@ -21,6 +21,7 @@ pub enum TokenKind {
     Minus,
     Multiply,
     Division,
+    Remainder,
     Semicolon,
     Comma,
     ParenStart,
@@ -125,6 +126,15 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
             consumed_line = 0;
             token = Token {
                 kind: TokenKind::Division,
+                lexeme: src[start..(start+1)].to_vec(),
+                line,
+            }
+        },
+        '%' => {
+            consumed_char = 1;
+            consumed_line = 0;
+            token = Token {
+                kind: TokenKind::Remainder,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
             }

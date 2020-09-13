@@ -38,6 +38,7 @@ pub enum Expr {
     Comparison(Binary),
     AddOrSub(Binary),
     MulOrDiv(Binary),
+    Remainder(Binary),
     Unary(Unary),
     Call(FunctionCall),
     Primary(Primary),
@@ -310,7 +311,7 @@ impl Parser {
     }
 
     fn comparison(&mut self) -> Expr {
-        let mut expr = self.addition();
+        let mut expr = self.remainder();
 
         while self.tokens[self.current].kind == TokenKind::GreaterThan ||
             self.tokens[self.current].kind == TokenKind::GreaterThanOrEqual ||
@@ -321,6 +322,23 @@ impl Parser {
             self.current += 1;
             let right = self.addition();
             expr = Expr::Comparison(Binary {
+                left: Box::new(expr),
+                right: Box::new(right),
+                operator,
+            })
+        }
+
+        expr
+    }
+
+    fn remainder(&mut self) -> Expr {
+        let mut expr = self.addition();
+
+        while self.tokens[self.current].kind == TokenKind::Remainder {
+            let operator = self.tokens[self.current].kind.clone();
+            self.current += 1;
+            let right = self.addition();
+            expr = Expr::Remainder(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,

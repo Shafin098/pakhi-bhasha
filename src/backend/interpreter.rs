@@ -238,6 +238,7 @@ impl Interpreter {
             parser::Expr::Comparison(comp_expr) => self.interpret_comp_expr(comp_expr),
             parser::Expr::AddOrSub(addsub_expr) => self.interpret_addsub_expr(addsub_expr),
             parser::Expr::MulOrDiv(muldiv_expr) => self.interpret_muldiv_expr(muldiv_expr),
+            parser::Expr::Remainder(reaminder_expr) => self.interpret_remainder_expr(reaminder_expr),
             _ => panic!("Expr interpretation not implemented\n Debug Expr: {:#?}", expr)
         }
     }
@@ -324,6 +325,22 @@ impl Interpreter {
                 match muldiv_expr.operator {
                     TokenKind::Multiply => return ExprResult::Num(left * right),
                     TokenKind::Division => return ExprResult::Num(left / right),
+                    _ => panic!(),
+                }
+            }
+        }
+
+        panic!("Unsupported operation on type");
+    }
+
+    fn interpret_remainder_expr(&mut self, remainder_expr: parser::Binary) -> ExprResult {
+        let right_expr_val = self.interpret_expr(*remainder_expr.right);
+        let left_expr_val = self.interpret_expr(*remainder_expr.left);
+
+        if let ExprResult::Num(right)  = right_expr_val {
+            if let ExprResult::Num(left) = left_expr_val {
+                match remainder_expr.operator {
+                    TokenKind::Remainder => return ExprResult::Num(left % right),
                     _ => panic!(),
                 }
             }
