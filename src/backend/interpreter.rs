@@ -4,7 +4,7 @@ use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-enum ExprResult {
+enum DataType {
     Num(f64),
     Bool(bool),
     String(String),
@@ -21,7 +21,7 @@ struct Interpreter {
     current: usize,
     statements: Vec<parser::Stmt>,
     loops: Vec<LoopEnv>,
-    envs: Vec<HashMap<String, Option<ExprResult>>>,
+    envs: Vec<HashMap<String, Option<DataType>>>,
     previous_if_was_executed: Vec<bool>,
 }
 
@@ -117,9 +117,9 @@ impl Interpreter {
 
     fn interpret_print_stmt(&mut self, expr: parser::Expr) {
         match self.interpret_expr(expr) {
-            ExprResult::Num(n) => println!("{}", self.to_bn_num(n)),
-            ExprResult::Bool(b) => println!("{}", self.to_bn_bool(b)),
-            ExprResult::String(s) => println!("{}", s),
+            DataType::Num(n) => println!("{}", self.to_bn_num(n)),
+            DataType::Bool(b) => println!("{}", self.to_bn_bool(b)),
+            DataType::String(s) => println!("{}", s),
         }
         self.current += 1;
     }
@@ -172,7 +172,7 @@ impl Interpreter {
 
         let if_condition_expr = self.interpret_expr(expr);
 
-        if let ExprResult::Bool(condition) = if_condition_expr {
+        if let DataType::Bool(condition) = if_condition_expr {
             if condition == false {
                 self.previous_if_was_executed.push(false);
                 // condition expression of if statement is false so skipping next block statement
@@ -228,7 +228,7 @@ impl Interpreter {
         }
     }
 
-    fn interpret_expr(&mut self, expr: parser::Expr) -> ExprResult {
+    fn interpret_expr(&mut self, expr: parser::Expr) -> DataType {
         match expr {
             parser::Expr::Primary(p) => self.interpret_primary_expr(p),
             parser::Expr::Unary(u_expr) => self.interpret_unary_expr(u_expr),
@@ -237,35 +237,34 @@ impl Interpreter {
             parser::Expr::Equality(eq_expr) => self.interpret_eq_expr(eq_expr),
             parser::Expr::Comparison(comp_expr) => self.interpret_comp_expr(comp_expr),
             parser::Expr::AddOrSub(addsub_expr) => self.interpret_addsub_expr(addsub_expr),
-            parser::Expr::MulOrDiv(muldiv_expr) => self.interpret_muldiv_expr(muldiv_expr),
-            parser::Expr::Remainder(reaminder_expr) => self.interpret_remainder_expr(reaminder_expr),
+            parser::Expr::MulOrDivOrRemainder(muldiv_expr) => self.interpret_muldiv_remainder_expr(muldiv_expr),
             _ => panic!("Expr interpretation not implemented\n Debug Expr: {:#?}", expr)
         }
     }
 
-    fn interpret_primary_expr(&mut self, p: parser::Primary) -> ExprResult {
+    fn interpret_primary_expr(&mut self, p: parser::Primary) -> DataType {
         match p {
-            parser::Primary::String(s) => ExprResult::String(s),
-            parser::Primary::Num(n) => ExprResult::Num(n),
-            parser::Primary::Bool(b) => ExprResult::Bool(b),
+            parser::Primary::String(s) => DataType::String(s),
+            parser::Primary::Num(n) => DataType::Num(n),
+            parser::Primary::Bool(b) => DataType::Bool(b),
             parser::Primary::Var(v) => self.interpret_var(v),
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
             //_ => panic!("Primary interpretation not implemented\n Debug Primary: {:#?}", p),
         }
     }
 
-    fn interpret_unary_expr(&mut self, u_expr: parser::Unary) -> ExprResult {
+    fn interpret_unary_expr(&mut self, u_expr: parser::Unary) -> DataType {
         let expr_val = self.interpret_expr(*u_expr.right);
         match expr_val {
-            ExprResult::Num(n) => {
+            DataType::Num(n) => {
                 if u_expr.operator == TokenKind::Minus {
-                    return ExprResult::Num(n * -1.0);
+                    return DataType::Num(n * -1.0);
                 }
                 panic!("Unsupported operation on type");
             },
-            ExprResult::Bool(b) => {
+            DataType::Bool(b) => {
                 if u_expr.operator == TokenKind::Not {
-                    return ExprResult::Bool(!b);
+                    return DataType::Bool(!b);
                 }
                 panic!("Unsupported operation on type");
             },
@@ -273,41 +272,41 @@ impl Interpreter {
         }
     }
 
-    fn interpret_and_expr(&mut self, and_expr: parser::And) -> ExprResult {
+    fn interpret_and_expr(&mut self, and_expr: parser::And) -> DataType {
         let right_expr_val = self.interpret_expr(*and_expr.right);
         let left_expr_val = self.interpret_expr(*and_expr.left);
 
-        if let ExprResult::Bool(right)  = right_expr_val {
-           if let ExprResult::Bool(left) = left_expr_val {
-               return ExprResult::Bool(right && left);
+        if let DataType::Bool(right)  = right_expr_val {
+           if let DataType::Bool(left) = left_expr_val {
+               return DataType::Bool(right && left);
            }
         }
 
         panic!("Unsupported operation on type");
     }
 
-    fn interpret_or_expr(&mut self, or_expr: parser::Or) -> ExprResult {
+    fn interpret_or_expr(&mut self, or_expr: parser::Or) -> DataType {
         let right_expr_val = self.interpret_expr(*or_expr.right);
         let left_expr_val = self.interpret_expr(*or_expr.left);
 
-        if let ExprResult::Bool(right)  = right_expr_val {
-            if let ExprResult::Bool(left) = left_expr_val {
-                return ExprResult::Bool(right || left);
+        if let DataType::Bool(right)  = right_expr_val {
+            if let DataType::Bool(left) = left_expr_val {
+                return DataType::Bool(right || left);
             }
         }
 
         panic!("Unsupported operation on type");
     }
 
-    fn interpret_addsub_expr(&mut self, addsub_expr: parser::Binary) -> ExprResult {
+    fn interpret_addsub_expr(&mut self, addsub_expr: parser::Binary) -> DataType {
         let right_expr_val = self.interpret_expr(*addsub_expr.right);
         let left_expr_val = self.interpret_expr(*addsub_expr.left);
 
-        if let ExprResult::Num(right)  = right_expr_val {
-            if let ExprResult::Num(left) = left_expr_val {
+        if let DataType::Num(right)  = right_expr_val {
+            if let DataType::Num(left) = left_expr_val {
                 match addsub_expr.operator {
-                    TokenKind::Plus => return ExprResult::Num(left + right),
-                    TokenKind::Minus => return ExprResult::Num(left - right),
+                    TokenKind::Plus => return DataType::Num(left + right),
+                    TokenKind::Minus => return DataType::Num(left - right),
                     _ => panic!(),
                 }
             }
@@ -316,15 +315,16 @@ impl Interpreter {
         panic!("Unsupported operation on type");
     }
 
-    fn interpret_muldiv_expr(&mut self, muldiv_expr: parser::Binary) -> ExprResult {
+    fn interpret_muldiv_remainder_expr(&mut self, muldiv_expr: parser::Binary) -> DataType {
         let right_expr_val = self.interpret_expr(*muldiv_expr.right);
         let left_expr_val = self.interpret_expr(*muldiv_expr.left);
 
-        if let ExprResult::Num(right)  = right_expr_val {
-            if let ExprResult::Num(left) = left_expr_val {
+        if let DataType::Num(right)  = right_expr_val {
+            if let DataType::Num(left) = left_expr_val {
                 match muldiv_expr.operator {
-                    TokenKind::Multiply => return ExprResult::Num(left * right),
-                    TokenKind::Division => return ExprResult::Num(left / right),
+                    TokenKind::Multiply => return DataType::Num(left * right),
+                    TokenKind::Division => return DataType::Num(left / right),
+                    TokenKind::Remainder => return DataType::Num(left % right),
                     _ => panic!(),
                 }
             }
@@ -333,54 +333,38 @@ impl Interpreter {
         panic!("Unsupported operation on type");
     }
 
-    fn interpret_remainder_expr(&mut self, remainder_expr: parser::Binary) -> ExprResult {
-        let right_expr_val = self.interpret_expr(*remainder_expr.right);
-        let left_expr_val = self.interpret_expr(*remainder_expr.left);
-
-        if let ExprResult::Num(right)  = right_expr_val {
-            if let ExprResult::Num(left) = left_expr_val {
-                match remainder_expr.operator {
-                    TokenKind::Remainder => return ExprResult::Num(left % right),
-                    _ => panic!(),
-                }
-            }
-        }
-
-        panic!("Unsupported operation on type");
-    }
-
-    fn interpret_eq_expr(&mut self, eq_expr: parser::Binary) -> ExprResult {
+    fn interpret_eq_expr(&mut self, eq_expr: parser::Binary) -> DataType {
         let right_expr_val = self.interpret_expr(*eq_expr.right);
         let left_expr_val = self.interpret_expr(*eq_expr.left);
 
         match eq_expr.operator {
-            TokenKind::EqualEqual => ExprResult::Bool(right_expr_val == left_expr_val),
-            TokenKind::NotEqual =>  ExprResult::Bool(right_expr_val != left_expr_val),
+            TokenKind::EqualEqual => DataType::Bool(right_expr_val == left_expr_val),
+            TokenKind::NotEqual =>  DataType::Bool(right_expr_val != left_expr_val),
             _ => panic!()
         }
     }
 
-    fn interpret_comp_expr(&mut self, comp_expr: parser::Binary) -> ExprResult {
+    fn interpret_comp_expr(&mut self, comp_expr: parser::Binary) -> DataType {
         let right_expr_val = self.interpret_expr(*comp_expr.right);
         let left_expr_val = self.interpret_expr(*comp_expr.left);
 
-        if let ExprResult::Bool(_b) = right_expr_val {
-            if let ExprResult::Bool(_b) = left_expr_val {
+        if let DataType::Bool(_b) = right_expr_val {
+            if let DataType::Bool(_b) = left_expr_val {
                 panic!();
             }
             panic!();
         }
 
         match comp_expr.operator {
-            TokenKind::GreaterThan => ExprResult::Bool(left_expr_val > right_expr_val),
-            TokenKind::GreaterThanOrEqual =>  ExprResult::Bool(left_expr_val >= right_expr_val),
-            TokenKind::LessThan =>  ExprResult::Bool(left_expr_val < right_expr_val),
-            TokenKind::LessThanOrEqual =>  ExprResult::Bool(left_expr_val <= right_expr_val),
+            TokenKind::GreaterThan => DataType::Bool(left_expr_val > right_expr_val),
+            TokenKind::GreaterThanOrEqual =>  DataType::Bool(left_expr_val >= right_expr_val),
+            TokenKind::LessThan =>  DataType::Bool(left_expr_val < right_expr_val),
+            TokenKind::LessThanOrEqual =>  DataType::Bool(left_expr_val <= right_expr_val),
             _ => panic!()
         }
     }
 
-    fn interpret_var(&mut self, v: Token) -> ExprResult {
+    fn interpret_var(&mut self, v: Token) -> DataType {
         let var_key: String = v.lexeme.clone().into_iter().collect();
 
         for env in self.envs.iter_mut().rev() {

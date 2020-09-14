@@ -37,8 +37,7 @@ pub enum Expr {
     Equality(Binary),
     Comparison(Binary),
     AddOrSub(Binary),
-    MulOrDiv(Binary),
-    Remainder(Binary),
+    MulOrDivOrRemainder(Binary),
     Unary(Unary),
     Call(FunctionCall),
     Primary(Primary),
@@ -311,7 +310,7 @@ impl Parser {
     }
 
     fn comparison(&mut self) -> Expr {
-        let mut expr = self.remainder();
+        let mut expr = self.addition();
 
         while self.tokens[self.current].kind == TokenKind::GreaterThan ||
             self.tokens[self.current].kind == TokenKind::GreaterThanOrEqual ||
@@ -322,23 +321,6 @@ impl Parser {
             self.current += 1;
             let right = self.addition();
             expr = Expr::Comparison(Binary {
-                left: Box::new(expr),
-                right: Box::new(right),
-                operator,
-            })
-        }
-
-        expr
-    }
-
-    fn remainder(&mut self) -> Expr {
-        let mut expr = self.addition();
-
-        while self.tokens[self.current].kind == TokenKind::Remainder {
-            let operator = self.tokens[self.current].kind.clone();
-            self.current += 1;
-            let right = self.addition();
-            expr = Expr::Remainder(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
@@ -371,12 +353,13 @@ impl Parser {
         let mut expr = self.unary();
 
         while self.tokens[self.current].kind == TokenKind::Multiply ||
-            self.tokens[self.current].kind == TokenKind::Division
+            self.tokens[self.current].kind == TokenKind::Division ||
+            self.tokens[self.current].kind == TokenKind::Remainder
         {
             let operator = self.tokens[self.current].kind.clone();
             self.current += 1;
             let right = self.unary();
-            expr = Expr::MulOrDiv(Binary {
+            expr = Expr::MulOrDivOrRemainder(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
@@ -521,7 +504,7 @@ mod tests {
         let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
             operator: TokenKind::Plus,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
-            right: Box::from(Expr::MulOrDiv(Binary {
+            right: Box::from(Expr::MulOrDivOrRemainder(Binary {
                 operator: TokenKind::Multiply,
                 left: Box::from(Expr::Primary(Primary::Num(3.0))),
                 right: Box::from(Expr::Primary(Primary::Num(2.0))),
