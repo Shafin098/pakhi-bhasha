@@ -8,6 +8,8 @@ pub enum Stmt {
     Expression(Expr),
     BlockStart,
     BlockEnd,
+    FuncDef,
+    Return(Expr),
     If(Expr),
     Loop,
     Continue,
@@ -111,7 +113,17 @@ impl Parser {
         match self.tokens[self.current].kind {
             TokenKind::Print => self.print_stmt(),
             TokenKind::Var => self.assignment_stmt(),
-            TokenKind::Identifier => self.re_assignment_stmt(),
+            TokenKind::Identifier => {
+                if self.tokens[self.current + 1].kind == TokenKind::ParenStart {
+                    // assuming its a function call statment
+                    let expr = self.expression();
+                    //consuming ; token
+                    self.current += 1;
+
+                    return Stmt::Expression(expr);
+                }
+                self.re_assignment_stmt()
+            },
             TokenKind::CurlyBraceStart => self.block_start(),
             TokenKind::CurlyBraceEnd => self.block_end(),
             TokenKind::If => self.if_statement(),
@@ -119,7 +131,9 @@ impl Parser {
             TokenKind::Loop => self.loop_stmt(),
             TokenKind::Continue => self.continue_stmt(),
             TokenKind::Break => self.break_stmt(),
-            _ => panic!("Err at line: {}\nDebug token{:#?}",
+            TokenKind::Function => self.func_def_stmt(),
+            TokenKind::Return => self.return_stmt(),
+             _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
     }
@@ -191,6 +205,7 @@ impl Parser {
         stmt
     }
 
+    // expression need to be wrapped in expression stmt because interpreter only accepts vec of stmts
     fn expression_stmt(&mut self) -> Stmt {
         Stmt::Expression(self.expression())
     }
@@ -203,6 +218,25 @@ impl Parser {
         self.current += 1;
 
         Stmt::Print(expr)
+    }
+
+    fn func_def_stmt(&mut self) -> Stmt {
+        // consuming function token
+        self.current += 1;
+
+        Stmt::FuncDef
+    }
+
+    fn return_stmt(&mut self) -> Stmt {
+        // consuming return token
+        self.current += 1;
+
+        let return_value = self.expression();
+
+        //consuming ; token
+        self.current += 1;
+
+        Stmt::Return(return_value)
     }
 
     fn block_start(&mut self) -> Stmt {
@@ -383,7 +417,6 @@ impl Parser {
 
             return expr;
         }
-
         return self.call()
     }
 
@@ -428,6 +461,7 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Expr {
+        println!("{:?}", self.tokens[self.current]);
         match self.tokens[self.current].kind.clone() {
             TokenKind::Bool(b) => {
                 self.current += 1;

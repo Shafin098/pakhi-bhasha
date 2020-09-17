@@ -425,6 +425,7 @@ fn keyword(char_vec: &Vec<char>, line: u32) -> Option<Token> {
     keyword_map.insert("অথবা".chars().collect(), TokenKind::Else);
     keyword_map.insert("লুপ".chars().collect(), TokenKind::Loop);
     keyword_map.insert("ফাং".chars().collect(), TokenKind::Function);
+    keyword_map.insert("মান".chars().collect(), TokenKind::Return);
     keyword_map.insert("থামো".chars().collect(), TokenKind::Break);
     keyword_map.insert("আবার".chars().collect(), TokenKind::Continue);
     keyword_map.insert("শেষ".chars().collect(), TokenKind::Return);
