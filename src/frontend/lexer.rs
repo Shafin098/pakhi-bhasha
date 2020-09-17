@@ -352,11 +352,11 @@ fn consume_num(src: &Vec<char>, start: usize) -> (f64, usize) {
         }
 
         if in_fractional_part {
-            fractional_val = (fractional_val * 10.0) + bn_digit_to_en_digit(src[i].clone());
+            fractional_val = (fractional_val * 10.0) + bn_digit_to_en_digit(src[i]);
             consumed += 1;
             i += 1;
         } else {
-            val = (val * 10.0) + bn_digit_to_en_digit(src[i].clone());
+            val = (val * 10.0) + bn_digit_to_en_digit(src[i]);
             consumed += 1;
             i += 1;
         }

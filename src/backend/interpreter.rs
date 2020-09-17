@@ -89,7 +89,7 @@ impl Interpreter {
 
                     if self.statements[self.current] == parser::Stmt::Continue {
                         stack.pop();
-                        if stack.len() == 0 {
+                        if stack.is_empty() {
                             // consuming Stmt::Continue
                             self.current += 1;
                             break;
@@ -153,12 +153,12 @@ impl Interpreter {
 
                     let env_i = self.envs.len() - 1;
                     let current_env = &mut self.envs[env_i];
-                    current_env.insert(var_key.clone(), Some(init_value));
+                    current_env.insert(var_key, Some(init_value));
                 },
                 _ => {
                     let env_i = self.envs.len() - 1;
                     let current_env = &mut self.envs[env_i];
-                    current_env.insert(var_key.clone(), None);
+                    current_env.insert(var_key, None);
                 },
             }
         }
@@ -185,7 +185,7 @@ impl Interpreter {
     }
 
     fn interpret_else_stmt(&mut self) {
-        assert!(self.previous_if_was_executed.len() > 0);
+        assert!(!self.previous_if_was_executed.is_empty());
 
         // consuming else token
         self.current += 1;
@@ -209,7 +209,7 @@ impl Interpreter {
                 let previous = stack.pop();
                 match previous {
                     Some(_) => {
-                        if stack.len() == 0 {
+                        if stack.is_empty() {
                             // consuming Stmt::BlockEnd
                             self.current += 1;
                             break;
