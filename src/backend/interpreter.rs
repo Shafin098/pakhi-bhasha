@@ -8,6 +8,14 @@ enum DataType {
     Num(f64),
     Bool(bool),
     String(String),
+    Function(Func),
+    Nil,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+struct Func {
+    starting_statement: usize,
+    args: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -21,7 +29,12 @@ struct Interpreter {
     current: usize,
     statements: Vec<parser::Stmt>,
     loops: Vec<LoopEnv>,
+    return_addrs: Vec<usize>,
     envs: Vec<HashMap<String, Option<DataType>>>,
+    // root_envs track index of envs created by function
+    // every function call creates a env which is root for all nested envs
+    // function is not allowed to access variable outside of function's root env
+    root_envs: Vec<usize>,
     previous_if_was_executed: Vec<bool>,
 }
 
@@ -31,7 +44,9 @@ impl Interpreter {
             current: 0,
             statements,
             loops: Vec::new(),
+            return_addrs: Vec::new(),
             envs: vec![HashMap::new()],
+            root_envs: Vec::new(),
             previous_if_was_executed: Vec::new(),
         }
     }
@@ -48,6 +63,11 @@ impl Interpreter {
             parser::Stmt::Assignment(assign_stmt) => self.interpret_assign_stmt(assign_stmt),
             parser::Stmt::If(cond_expr) => self.interpret_if_stmt(cond_expr),
             parser::Stmt::Else => self.interpret_else_stmt(),
+            parser::Stmt::FuncDef => self.interpret_funcdef(),
+            parser::Stmt::Expression(expr) => {
+                self.interpret_expr(expr);
+                self.current += 1;
+            },
             parser::Stmt::Loop => {
                 // consuming loop
                 self.current += 1;
@@ -120,6 +140,7 @@ impl Interpreter {
             DataType::Num(n) => println!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => println!("{}", self.to_bn_bool(b)),
             DataType::String(s) => println!("{}", s),
+            _ => panic!("Datatype isn't implemented"),
         }
         self.current += 1;
     }
@@ -166,6 +187,55 @@ impl Interpreter {
         self.current += 1;
     }
 
+    fn interpret_funcdef(&mut self) {
+        // consuming function definition statement
+        self.current += 1;
+
+        if let parser::Stmt::Expression(parser::Expr::Call(function)) = self.statements[self.current].clone() {
+            match *function.expr {
+                parser::Expr::Primary(parser::Primary::Var(func_token)) => {
+                    let func_name: String = func_token.lexeme.iter().collect();
+                    let func_args = function.arguments;
+                    let mut func_args_name: Vec<String> = Vec::new();
+                    //println!("{:#?}", func_args);
+                    for arg_expr in func_args {
+                        match arg_expr {
+                            parser::Expr::Primary(parser::Primary::Var(name_token)) => {
+                                func_args_name.push(name_token.lexeme.iter().collect());
+                            },
+                            _ => panic!(),
+                        }
+                    }
+
+                    let func = Func {
+                        starting_statement: self.current + 1,
+                        args: func_args_name,
+                    };
+
+                    let current_env_i = self.envs.len() - 1;
+                    self.envs[current_env_i].insert(func_name.clone(), Some(DataType::Function(func)));
+                },
+                _ => panic!(),
+            }
+        } else {
+            panic!();
+        }
+
+        // consuming function name and args statement (Expr::Call)
+        self.current += 1;
+
+        // skipping all statements in function body
+        // statements in func body is not executed during func definition
+        self.skip_block();
+
+        // consuming return statement
+        if let parser::Stmt::Return(_) = self.statements[self.current].clone() {
+           self.current += 1;
+        } else {
+            panic!("Return expected");
+        }
+    }
+
     fn interpret_if_stmt(&mut self, expr: parser::Expr) {
         // consuming if token
         self.current += 1;
@@ -197,7 +267,7 @@ impl Interpreter {
         self.previous_if_was_executed.pop();
     }
 
-    fn skip_block_in_if(&mut self) {
+    fn skip_block(&mut self) {
         let mut stack: Vec<char> = Vec::new();
 
         loop {
@@ -219,9 +289,13 @@ impl Interpreter {
                 }
             }
 
-            // skipping statements in block of if
+            // skipping statements in block
             self.current += 1;
         }
+    }
+
+    fn skip_block_in_if(&mut self) {
+        self.skip_block();
 
         if self.statements[self.current] != parser::Stmt::Else {
             self.previous_if_was_executed.pop();
@@ -238,12 +312,65 @@ impl Interpreter {
             parser::Expr::Comparison(comp_expr) => self.interpret_comp_expr(comp_expr),
             parser::Expr::AddOrSub(addsub_expr) => self.interpret_addsub_expr(addsub_expr),
             parser::Expr::MulOrDivOrRemainder(muldiv_expr) => self.interpret_muldiv_remainder_expr(muldiv_expr),
-            _ => panic!("Expr interpretation not implemented\n Debug Expr: {:#?}", expr)
+            parser::Expr::Call(function) => self.interpret_func_call_expr(function),
+            //_ => panic!("Expr interpretation not implemented\n Debug Expr: {:#?}", expr)
         }
+    }
+
+    fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
+        //println!("{:#?}", f);
+        match *f.expr {
+            parser::Expr::Primary(parser::Primary::Var(func_token)) => {
+                let func = self.interpret_var(func_token);
+
+                if let DataType::Function(func) = func {
+                    let mut root_env: HashMap<String, Option<DataType>> = HashMap::new();
+                    for i in 0..func.args.len() {
+                        if i < f.arguments.len() {
+                            root_env.insert(func.args[i].clone(), Option::from(self.interpret_expr(f.arguments[i].clone())));
+                        } else {
+                            // not enough arguments passed so assigning Nil
+                            root_env.insert(func.args[i].clone(), Option::from(DataType::Nil));
+                        }
+                    }
+                    // root_envs will be used in scoping
+                    self.root_envs.push(self.envs.len());
+
+                    // creating root_envs
+                    self.envs.push(root_env);
+
+                    self.return_addrs.push(self.current + 0);
+                    // pointing current to functions starting statement
+                    self.current = func.starting_statement;
+                } else {
+                    panic!("Function not Declared");
+                }
+            },
+            _ => panic!(),
+        }
+
+        assert_eq!(parser::Stmt::BlockStart, self.statements[self.current]);
+        // interpreting all statements inside function body
+        // assuming self.current was set at function start
+        loop {
+            if let parser::Stmt::Return(_) = self.statements[self.current].clone() {
+                break;
+            } else {
+                self.interpret();
+            }
+        }
+
+        if let parser::Stmt::Return(expr) = self.statements[self.current].clone() {
+            let return_val = self.interpret_expr(expr);
+            self.current = self.return_addrs.pop().unwrap();
+            return return_val;
+        }
+        panic!();
     }
 
     fn interpret_primary_expr(&mut self, p: parser::Primary) -> DataType {
         match p {
+            parser::Primary::Nil => DataType::Nil,
             parser::Primary::String(s) => DataType::String(s),
             parser::Primary::Num(n) => DataType::Num(n),
             parser::Primary::Bool(b) => DataType::Bool(b),

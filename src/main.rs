@@ -19,12 +19,12 @@ fn main() {
                     //    println!("{:#?}", t);
                     //}
                     let ast_tree = parser::parse(tokens);
-                    println!("Ast : {:#?}", ast_tree);
+                    //println!("Ast : {:#?}", ast_tree);
 
-                    //println!();
-                    //println!("Interpreter");
-                    //println!("____________");
-                    //interpreter::run(ast_tree);
+                    println!();
+                    println!("Interpreter");
+                    println!("____________");
+                    interpreter::run(ast_tree);
                 },
                 Err(e) => eprintln!("{}", e),
             }

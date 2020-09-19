@@ -47,6 +47,7 @@ pub enum Expr {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Primary {
+    Nil,
     Bool(bool),
     Num(f64),
     String(String),
@@ -102,6 +103,13 @@ impl Parser {
         let mut statements: Vec<Stmt> = Vec::new();
 
         while self.tokens[self.current].kind != TokenKind::EOT {
+            if self.tokens[self.current].kind == TokenKind::Semicolon {
+                // useful semicolon should be consumed by self.statements()
+                // if not consumed assuming not useful semicolon
+                // function call needs this
+                self.current += 1;
+                continue;
+            }
             statements.push(self.statements());
         }
         statements.push(Stmt::EOS);
@@ -115,10 +123,11 @@ impl Parser {
             TokenKind::Var => self.assignment_stmt(),
             TokenKind::Identifier => {
                 if self.tokens[self.current + 1].kind == TokenKind::ParenStart {
-                    // assuming its a function call statment
+                    // assuming its a function call statement
                     let expr = self.expression();
+
                     //consuming ; token
-                    self.current += 1;
+                    //self.current += 1;
 
                     return Stmt::Expression(expr);
                 }
@@ -231,11 +240,14 @@ impl Parser {
         // consuming return token
         self.current += 1;
 
-        let return_value = self.expression();
+        let mut return_value = Expr::Primary(Primary::Nil);
+        if self.tokens[self.current].kind != TokenKind::Semicolon {
+            // if not semicolon function return a value
+            return_value = self.expression();
+        }
 
         //consuming ; token
         self.current += 1;
-
         Stmt::Return(return_value)
     }
 
@@ -422,6 +434,7 @@ impl Parser {
 
     fn finish_call(&mut self, calle: Expr) -> Expr {
         let mut arguments: Vec<Expr> = Vec::new();
+
         if self.tokens[self.current].kind != TokenKind::ParenEnd {
             loop {
                 arguments.push(self.expression());
@@ -461,7 +474,6 @@ impl Parser {
     }
 
     fn primary(&mut self) -> Expr {
-        println!("{:?}", self.tokens[self.current]);
         match self.tokens[self.current].kind.clone() {
             TokenKind::Bool(b) => {
                 self.current += 1;
