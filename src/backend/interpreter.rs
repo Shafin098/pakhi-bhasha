@@ -1,3 +1,5 @@
+// TODO bug: function should not access scope above itself fix it
+
 use std::collections::HashMap;
 use crate::frontend::parser;
 use crate::frontend::lexer::Token;
@@ -34,7 +36,7 @@ struct Interpreter {
     // root_envs track index of envs created by function
     // every function call creates a env which is root for all nested envs
     // function is not allowed to access variable outside of function's root env
-    root_envs: Vec<usize>,
+    root_envs: HashMap<usize, bool>,
     previous_if_was_executed: Vec<bool>,
 }
 
@@ -46,7 +48,7 @@ impl Interpreter {
             loops: Vec::new(),
             return_addrs: Vec::new(),
             envs: vec![HashMap::new()],
-            root_envs: Vec::new(),
+            root_envs: HashMap::new(),
             previous_if_was_executed: Vec::new(),
         }
     }
@@ -318,7 +320,8 @@ impl Interpreter {
     }
 
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
-        //println!("{:#?}", f);
+        let env_count_before_fn_call = self.envs.len();
+
         match *f.expr {
             parser::Expr::Primary(parser::Primary::Var(func_token)) => {
                 let func = self.interpret_var(func_token);
@@ -333,13 +336,16 @@ impl Interpreter {
                             root_env.insert(func.args[i].clone(), Option::from(DataType::Nil));
                         }
                     }
-                    // root_envs will be used in scoping
-                    self.root_envs.push(self.envs.len());
+
 
                     // creating root_envs
                     self.envs.push(root_env);
 
-                    self.return_addrs.push(self.current + 0);
+                    self.return_addrs.push(self.current);
+
+                    // root_envs will be used in scoping
+                    self.root_envs.insert(self.envs.len(), true);
+
                     // pointing current to functions starting statement
                     self.current = func.starting_statement;
                 } else {
@@ -363,6 +369,15 @@ impl Interpreter {
         if let parser::Stmt::Return(expr) = self.statements[self.current].clone() {
             let return_val = self.interpret_expr(expr);
             self.current = self.return_addrs.pop().unwrap();
+
+            let env_count_after_fn_call = self.envs.len();
+            let envs_created_inside_fn = env_count_after_fn_call - env_count_before_fn_call;
+            for _ in 0..envs_created_inside_fn {
+                // return can also happen mid function without reaching blockEnd '}' statement
+                // so half used env must be destroyed manually
+                self.envs.pop();
+            }
+
             return return_val;
         }
         panic!();
@@ -492,15 +507,32 @@ impl Interpreter {
     }
 
     fn interpret_var(&mut self, v: Token) -> DataType {
+        //println!("start");
+        let e = self.envs.clone();
+
         let var_key: String = v.lexeme.clone().into_iter().collect();
 
+        let last_env_index = self.envs.len() - 1;
+        let mut envs_traversed = 0;
         for env in self.envs.iter_mut().rev() {
+            envs_traversed += 1;
+
             let expr_result = env.get(&*var_key);
             if expr_result.is_some() {
                 match expr_result.unwrap() {
                     Some(var_value) => return var_value.clone(),
                     None => panic!("Variable wasn't initialized {:#?}", v.lexeme),
                 }
+            }
+
+            let mut currently_env_index = last_env_index - envs_traversed;
+            if self.root_envs.contains_key(&currently_env_index) {
+                self.root_envs.remove(&currently_env_index);
+                break;
+            } else {
+                //println!("{:?}", e);
+                //println!("{:?}", self.root_envs);
+                //println!("env index: {}", currently_env_index);
             }
         }
         panic!("Variable wasn't initialized {:#?}", v.lexeme);
