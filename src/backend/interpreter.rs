@@ -57,6 +57,7 @@ impl Interpreter {
     fn interpret(&mut self) {
         match self.statements[self.current].clone() {
             parser::Stmt::Print(expr) => self.interpret_print_stmt(expr),
+            parser::Stmt::PrintNoEOL(expr) => self.interpret_print_no_eol(expr),
             parser::Stmt::Assignment(assign_stmt) => self.interpret_assign_stmt(assign_stmt),
             parser::Stmt::If(cond_expr) => self.interpret_if_stmt(cond_expr),
             parser::Stmt::Else => self.interpret_else_stmt(),
@@ -130,6 +131,16 @@ impl Interpreter {
             }
             _ => panic!("Interpreter error\n Debug Statement {:#?}", self.statements[self.current]),
         }
+    }
+
+    fn interpret_print_no_eol(&mut self, expr: parser::Expr) {
+        match self.interpret_expr(expr) {
+            DataType::Num(n) => print!("{}", self.to_bn_num(n)),
+            DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
+            DataType::String(s) => print!("{}", s),
+            _ => panic!("Datatype isn't implemented"),
+        }
+        self.current += 1;
     }
 
     fn interpret_print_stmt(&mut self, expr: parser::Expr) {

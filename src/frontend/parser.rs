@@ -4,6 +4,7 @@ use crate::frontend::lexer::TokenKind;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
     Print(Expr),
+    PrintNoEOL(Expr),
     Assignment(Assignment),
     Expression(Expr),
     BlockStart,
@@ -120,6 +121,15 @@ impl Parser {
     fn statements(&mut self) -> Stmt {
         match self.tokens[self.current].kind {
             TokenKind::Print => self.print_stmt(),
+            TokenKind::PrintNoEOL => {
+                // consuming token
+                self.current += 1;
+                let expr = self.expression();
+                //consuming last ';' of print statement
+                self.current += 1;
+
+                Stmt::PrintNoEOL(expr)
+            },
             TokenKind::Var => self.assignment_stmt(),
             TokenKind::Identifier => {
                 if self.tokens[self.current + 1].kind == TokenKind::ParenStart {
