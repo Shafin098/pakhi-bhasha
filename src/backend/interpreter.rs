@@ -33,10 +33,6 @@ struct Interpreter {
     loops: Vec<LoopEnv>,
     return_addrs: Vec<usize>,
     envs: Vec<HashMap<String, Option<DataType>>>,
-    // root_envs track index of envs created by function
-    // every function call creates a env which is root for all nested envs
-    // function is not allowed to access variable outside of function's root env
-    root_envs: HashMap<usize, bool>,
     previous_if_was_executed: Vec<bool>,
 }
 
@@ -48,7 +44,6 @@ impl Interpreter {
             loops: Vec::new(),
             return_addrs: Vec::new(),
             envs: vec![HashMap::new()],
-            root_envs: HashMap::new(),
             previous_if_was_executed: Vec::new(),
         }
     }
@@ -337,14 +332,13 @@ impl Interpreter {
                         }
                     }
 
+                    // root key indicates its a functions root env
+                    root_env.insert("root".to_string(), Some(DataType::Nil));
 
                     // creating root_envs
                     self.envs.push(root_env);
 
                     self.return_addrs.push(self.current);
-
-                    // root_envs will be used in scoping
-                    self.root_envs.insert(self.envs.len(), true);
 
                     // pointing current to functions starting statement
                     self.current = func.starting_statement;
@@ -507,32 +501,23 @@ impl Interpreter {
     }
 
     fn interpret_var(&mut self, v: Token) -> DataType {
-        //println!("start");
-        let e = self.envs.clone();
-
         let var_key: String = v.lexeme.clone().into_iter().collect();
 
-        let last_env_index = self.envs.len() - 1;
-        let mut envs_traversed = 0;
         for env in self.envs.iter_mut().rev() {
-            envs_traversed += 1;
 
             let expr_result = env.get(&*var_key);
             if expr_result.is_some() {
                 match expr_result.unwrap() {
                     Some(var_value) => return var_value.clone(),
-                    None => panic!("Variable wasn't initialized {:#?}", v.lexeme),
+                    None => {
+                        panic!("Variable wasn't initializedd {:#?}", v.lexeme)
+                    },
                 }
             }
 
-            let mut currently_env_index = last_env_index - envs_traversed;
-            if self.root_envs.contains_key(&currently_env_index) {
-                self.root_envs.remove(&currently_env_index);
+            // if contains root means at current env is root of the function
+            if env.contains_key("root") {
                 break;
-            } else {
-                //println!("{:?}", e);
-                //println!("{:?}", self.root_envs);
-                //println!("env index: {}", currently_env_index);
             }
         }
         panic!("Variable wasn't initialized {:#?}", v.lexeme);
