@@ -10,6 +10,7 @@ enum DataType {
     Num(f64),
     Bool(bool),
     String(String),
+    Array(Vec<DataType>),
     Function(Func),
     Nil,
 }
@@ -138,9 +139,38 @@ impl Interpreter {
             DataType::Num(n) => print!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
             DataType::String(s) => print!("{}", s),
+            DataType::Array(arr) => {
+                print!("[");
+                for (i, elem) in arr.iter().enumerate() {
+                    self.print_datatype(elem.clone());
+                    if (i+1) < arr.len() {
+                        print!(", ")
+                    }
+                }
+                print!("]");
+            },
             _ => panic!("Datatype isn't implemented"),
         }
         self.current += 1;
+    }
+
+    fn print_datatype(&mut self, data: DataType) {
+        match data {
+            DataType::Num(n) => print!("{}", self.to_bn_num(n)),
+            DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
+            DataType::String(s) => print!("{}", s),
+            DataType::Array(a) => {
+                print!("[");
+                for (i, elem) in a.iter().enumerate() {
+                    self.print_datatype(elem.clone());
+                    if (i+1) < a.len() {
+                        print!(", ")
+                    }
+                }
+                print!("]");
+            },
+            _ => panic!("Datatype isn't implemented"),
+        }
     }
 
     fn interpret_print_stmt(&mut self, expr: parser::Expr) {
@@ -148,7 +178,17 @@ impl Interpreter {
             DataType::Num(n) => println!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => println!("{}", self.to_bn_bool(b)),
             DataType::String(s) => println!("{}", s),
-            _ => panic!("Datatype isn't implemented"),
+            DataType::Array(arr) => {
+                print!("[");
+                for (i, elem) in arr.iter().enumerate() {
+                    self.print_datatype(elem.clone());
+                    if (i+1) < arr.len() {
+                        print!(", ")
+                    }
+                }
+                println!("]");
+            },
+            _ => panic!("Datatype printing isn't implemented"),
         }
         self.current += 1;
     }
@@ -395,6 +435,15 @@ impl Interpreter {
             parser::Primary::Num(n) => DataType::Num(n),
             parser::Primary::Bool(b) => DataType::Bool(b),
             parser::Primary::Var(v) => self.interpret_var(v),
+            parser::Primary::Array(array) => {
+                // this is a internal pakhi array data type representation
+                let mut pakhi_array: Vec<DataType> = Vec::new();
+                for elem in array {
+                    pakhi_array.push(self.interpret_expr(elem));
+                }
+
+                return DataType::Array(pakhi_array);
+            },
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
             _ => panic!("Primary interpretation not implemented\n Debug Primary: {:#?}", p),
         }
