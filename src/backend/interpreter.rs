@@ -396,7 +396,7 @@ impl Interpreter {
             parser::Primary::Bool(b) => DataType::Bool(b),
             parser::Primary::Var(v) => self.interpret_var(v),
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
-            //_ => panic!("Primary interpretation not implemented\n Debug Primary: {:#?}", p),
+            _ => panic!("Primary interpretation not implemented\n Debug Primary: {:#?}", p),
         }
     }
 

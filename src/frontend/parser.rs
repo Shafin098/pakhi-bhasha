@@ -52,6 +52,7 @@ pub enum Primary {
     Bool(bool),
     Num(f64),
     String(String),
+    Array(Vec<Expr>),
     Var(Token),
     Group(Box<Expr>),
 }
@@ -508,6 +509,26 @@ impl Parser {
                 self.current += 1;
                 return  Expr::Primary(Primary::Group(Box::new(expr)));
             },
+            TokenKind::SquareBraceStart => {
+                // consuming [ Token
+                self.current += 1;
+
+                let mut array_literal: Vec<Expr> = Vec::new();
+
+                while self.tokens[self.current].kind != TokenKind::SquareBraceEnd {
+                    array_literal.push(self.expression());
+
+                    if self.tokens[self.current].kind == TokenKind::Comma {
+                        //consuming comma token
+                        self.current += 1;
+                    }
+                }
+
+                //consuming ] Token
+                self.current += 1;
+
+                return Expr::Primary(Primary::Array(array_literal));
+            }
             _ => panic!("Error at line: {}\n Debug Token: {:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
