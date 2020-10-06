@@ -243,6 +243,24 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 line,
             }
         },
+        '[' => {
+            consumed_char = 1;
+            consumed_line = 0;
+            token = Token {
+                kind: TokenKind::SquareBraceStart,
+                lexeme: src[start..(start+1)].to_vec(),
+                line,
+            }
+        },
+        ']' => {
+            consumed_char = 1;
+            consumed_line = 0;
+            token = Token {
+                kind: TokenKind::SquareBraceEnd,
+                lexeme: src[start..(start+1)].to_vec(),
+                line,
+            }
+        },
         '=' => {
             if start < src.len() && src[start+1] == '=' {
                 consumed_char = 2;
