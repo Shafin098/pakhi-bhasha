@@ -449,17 +449,23 @@ impl Interpreter {
         let right_expr_val = self.interpret_expr(*addsub_expr.right);
         let left_expr_val = self.interpret_expr(*addsub_expr.left);
 
-        if let DataType::Num(right)  = right_expr_val {
-            if let DataType::Num(left) = left_expr_val {
+        match (left_expr_val, right_expr_val) {
+            (DataType::Num(left), DataType::Num(right)) => {
                 match addsub_expr.operator {
                     TokenKind::Plus => return DataType::Num(left + right),
                     TokenKind::Minus => return DataType::Num(left - right),
-                    _ => panic!(),
+                    _ => panic!("Invalid operation"),
                 }
-            }
-        }
+            },
+            (DataType::String(left_str), DataType::String(right_str)) => {
+                if addsub_expr.operator == TokenKind::Plus {
+                    return DataType::String(format!("{}{}", left_str, right_str));
+                }
 
-        panic!("Unsupported operation on type");
+                panic!("Invalid operation on string");
+            },
+            _ => panic!("Invalid operation"),
+        }
     }
 
     fn interpret_muldiv_remainder_expr(&mut self, muldiv_expr: parser::Binary) -> DataType {
