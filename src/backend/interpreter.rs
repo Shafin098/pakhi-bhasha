@@ -464,7 +464,7 @@ impl Interpreter {
 
                 panic!("Invalid operation on string");
             },
-            _ => panic!("Invalid operation"),
+            _ => panic!("Invalid operation, data type mismatched"),
         }
     }
 
