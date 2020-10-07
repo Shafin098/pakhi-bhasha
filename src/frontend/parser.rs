@@ -35,6 +35,7 @@ pub enum AssignmentKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
+    ArrayIndexing(Box<Expr>, Box<Expr>),
     Or(Or),
     And(And),
     Equality(Binary),
@@ -499,8 +500,24 @@ impl Parser {
                 return Expr::Primary(Primary::String(s));
             },
             TokenKind::Identifier => {
+                let identifier = Expr::Primary(Primary::Var(self.tokens[self.current].clone()));
+                // consuming identifier token
                 self.current += 1;
-                return Expr::Primary(Primary::Var(self.tokens[self.current-1].clone()));
+
+                if self.tokens[self.current].kind == TokenKind::SquareBraceStart {
+                    // consuming [ token
+                    self.current += 1;
+                    let i = self.expression();
+                    if self.tokens[self.current].kind != TokenKind::SquareBraceEnd {
+                        panic!("Expected ] at line {}", self.tokens[self.current].line);
+                    }
+                    // consuming ] token
+                    self.current += 1;
+
+                    return Expr::ArrayIndexing(Box::new(identifier), Box::new(i));
+                } else {
+                    return identifier;
+                }
             },
             TokenKind::ParenStart => {
                 self.current += 1;

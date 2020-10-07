@@ -361,7 +361,19 @@ impl Interpreter {
             parser::Expr::AddOrSub(addsub_expr) => self.interpret_addsub_expr(addsub_expr),
             parser::Expr::MulOrDivOrRemainder(muldiv_expr) => self.interpret_muldiv_remainder_expr(muldiv_expr),
             parser::Expr::Call(function) => self.interpret_func_call_expr(function),
-            //_ => panic!("Expr interpretation not implemented\n Debug Expr: {:#?}", expr)
+            parser::Expr::ArrayIndexing(identifier, i) => self.interpret_arr_indexing(identifier, i),
+        }
+    }
+
+    fn interpret_arr_indexing(&mut self, indentifier: Box<parser::Expr>, index: Box<parser::Expr>) -> DataType {
+        let identifier = self.interpret_expr(*indentifier);
+        let index = self.interpret_expr(*index);
+
+        match (identifier, index) {
+            (DataType::Array(arr), DataType::Num(i)) => return arr[i as usize].clone(),
+            (_, DataType::Num(_)) => panic!("Indexing only possible with array"),
+            (DataType::Array(_), _) => panic!("Array index must evaluate to number type"),
+            _ => panic!("Invalid indexing format"),
         }
     }
 
@@ -445,7 +457,6 @@ impl Interpreter {
                 return DataType::Array(pakhi_array);
             },
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
-            _ => panic!("Primary interpretation not implemented\n Debug Primary: {:#?}", p),
         }
     }
 
@@ -576,7 +587,7 @@ impl Interpreter {
                 match expr_result.unwrap() {
                     Some(var_value) => return var_value.clone(),
                     None => {
-                        panic!("Variable wasn't initializedd {:#?}", v.lexeme)
+                        panic!("Variable wasn't initialized {:#?}", v.lexeme)
                     },
                 }
             }
