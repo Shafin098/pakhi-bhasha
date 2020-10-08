@@ -500,11 +500,12 @@ impl Parser {
                 return Expr::Primary(Primary::String(s));
             },
             TokenKind::Identifier => {
-                let identifier = Expr::Primary(Primary::Var(self.tokens[self.current].clone()));
+                // this is identifier or array index expression
+                let mut expr = Expr::Primary(Primary::Var(self.tokens[self.current].clone()));
                 // consuming identifier token
                 self.current += 1;
 
-                if self.tokens[self.current].kind == TokenKind::SquareBraceStart {
+                while self.tokens[self.current].kind == TokenKind::SquareBraceStart {
                     // consuming [ token
                     self.current += 1;
                     let i = self.expression();
@@ -514,10 +515,10 @@ impl Parser {
                     // consuming ] token
                     self.current += 1;
 
-                    return Expr::ArrayIndexing(Box::new(identifier), Box::new(i));
-                } else {
-                    return identifier;
+                    expr = Expr::ArrayIndexing(Box::new(expr), Box::new(i));
                 }
+
+                return expr;
             },
             TokenKind::ParenStart => {
                 self.current += 1;
