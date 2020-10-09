@@ -15,7 +15,7 @@ pub enum TokenKind {
     If,
     Else,
     Loop,
-    Var,
+    Var,        // নাম keyword is TokenKind of Var. Not variable identifier
     Function,
     Plus,
     Minus,

@@ -1,5 +1,3 @@
-// TODO bug: function should not access scope above itself fix it
-
 use std::collections::HashMap;
 use crate::frontend::parser;
 use crate::frontend::lexer::Token;
@@ -208,10 +206,85 @@ impl Interpreter {
             let init_expr = assign_stmt.init_value.clone().unwrap();
             let init_value = self.interpret_expr(init_expr);
 
-            if var_found_at_env_index < 0 {
-                panic!("Variable wasn't initialized {:#}", var_key);
+            if var_found_at_env_index >= 0 {
+                if assign_stmt.indexes.is_empty() {
+                    // only simple variable assignment
+                    self.envs[var_found_at_env_index as usize].insert(var_key.clone(), Some(init_value));
+                } else {
+                    // assignment to element in a array
+
+                    // effective_index is index of deepest nested array, to which init_val will be assigned
+                    let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
+                    let mut evaluated_index_exprs: Vec<usize> = Vec::new();
+                    for i in 0..assign_stmt.indexes.len() - 1 {
+                        let index = self.interpret_expr(assign_stmt.indexes[i].clone());
+                        match  index {
+                            DataType::Array(a) => {
+                                match a[0] {
+                                    DataType::Num(i) => evaluated_index_exprs.push(i as usize),
+                                    _ => panic!(),
+                                }
+                            },
+                            _ => panic!(),
+                        }
+                    }
+
+                    let var = self.envs[var_found_at_env_index as usize]
+                        .get_mut(var_key.as_str()).unwrap();
+
+                    match var {
+                        Some(DataType::Array(arr)) => {
+                            if assign_stmt.indexes.len() == 1 {
+                                match effective_index {
+                                    DataType::Array(a) => {
+                                        match a[0] {
+                                            DataType::Num(n) => arr[n as usize] = init_value,
+                                            _ => panic!(),
+                                        }
+                                    },
+                                    _ => panic!(),
+                                }
+                                self.current += 1;
+                                return;
+                            }
+
+                            let mut assignee: &mut DataType = arr.get_mut(0).unwrap();
+                            for (i, _) in assign_stmt.indexes.iter().enumerate() {
+                                if assign_stmt.indexes.len() == 1 {
+                                    match assignee {
+                                        DataType::Array(var_arr) => {
+                                            if let DataType::Num(index_of_var_arr) = effective_index {
+                                                var_arr[index_of_var_arr as usize] = init_value;
+                                            }
+                                        },
+                                        _ => {
+                                            panic!()
+                                        },
+                                    }
+                                    break;
+                                } else if i == assign_stmt.indexes.len() - 2 {
+                                    match assignee {
+                                        DataType::Array(var_arr) => {
+                                            if let DataType::Num(index_of_var_arr) = effective_index {
+                                                    var_arr[index_of_var_arr as usize] = init_value;
+                                            }
+                                        },
+                                        _ => {
+                                            println!("{:?}", assignee);
+                                            panic!()
+                                        },
+                                    }
+                                    break;
+                                }
+
+                                assignee = arr.get_mut(evaluated_index_exprs[i]).unwrap();
+                            }
+                        },
+                        _ => panic!("Variable wasn't initialized {:#}", var_key),
+                    }
+                }
             } else {
-                self.envs[var_found_at_env_index as usize].insert(var_key.clone(), Some(init_value));
+                panic!("Variable wasn't initialized {:#}", var_key);
             }
         }
 

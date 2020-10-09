@@ -24,6 +24,8 @@ pub enum Stmt {
 pub struct Assignment {
     pub kind: AssignmentKind,
     pub var_name: Token,
+    // assignment could me made to array element, so indexes are needed
+    pub indexes: Vec<Expr>,
     pub init_value: Option<Expr>,
 }
 
@@ -106,14 +108,16 @@ impl Parser {
         let mut statements: Vec<Stmt> = Vec::new();
 
         while self.tokens[self.current].kind != TokenKind::EOT {
+            statements.push(self.statements());
+
             if self.tokens[self.current].kind == TokenKind::Semicolon {
                 // useful semicolon should be consumed by self.statements()
                 // if not consumed assuming not useful semicolon
                 // function call needs this
+                // skipping semicolon
                 self.current += 1;
                 continue;
             }
-            statements.push(self.statements());
         }
         statements.push(Stmt::EOS);
 
@@ -134,15 +138,15 @@ impl Parser {
             },
             TokenKind::Var => self.assignment_stmt(),
             TokenKind::Identifier => {
+                // probably array indexing after function call won't work
                 if self.tokens[self.current + 1].kind == TokenKind::ParenStart {
                     // assuming its a function call statement
                     let expr = self.expression();
 
-                    //consuming ; token
-                    //self.current += 1;
-
                     return Stmt::Expression(expr);
                 }
+                // if next token is not paren assuming it's a reassignment statement, or expression
+                // statement which ony has identifier
                 self.re_assignment_stmt()
             },
             TokenKind::CurlyBraceStart => self.block_start(),
@@ -177,13 +181,16 @@ impl Parser {
             stmt = Stmt::Assignment(Assignment {
                 kind: AssignmentKind::FirstAssignment,
                 var_name,
+                indexes: Vec::new(),
                 init_value: None,
             });
         } else {
             let expr = self.expression();
+            // init value provided for assigning to variable
             stmt = Stmt::Assignment(Assignment {
                 kind: AssignmentKind::FirstAssignment,
                 var_name,
+                indexes: Vec::new(),
                 init_value: Some(expr),
             });
         }
@@ -198,13 +205,26 @@ impl Parser {
     }
 
     fn re_assignment_stmt(&mut self) -> Stmt {
-        if self.tokens[self.current+1].kind != TokenKind::Equal {
+        if self.tokens[self.current+1].kind != TokenKind::Equal &&
+            self.tokens[self.current+1].kind != TokenKind::SquareBraceStart {
+            // not a reassignment, only expression statement;
             return self.expression_stmt();
         }
 
         let var_name = self.tokens[self.current].clone();
         // consuming Identifier token
         self.current += 1;
+
+        // indexes will be populated only if assigning to array element, otherwise it will be empty
+        let mut indexes: Vec<Expr> = Vec::new();
+        while self.tokens[self.current].kind != TokenKind::Equal {
+            let index = self.expression();
+            if let Expr::Primary(Primary::Array(_)) = index {
+                indexes.push(index);
+            } else {
+                panic!("Error at line {}. Array index expected", self.tokens[self.current].line);
+            }
+        }
 
         if self.tokens[self.current].kind != TokenKind::Equal {
            panic!("Expected '=' at line {}", self.tokens[self.current].line);
@@ -220,6 +240,7 @@ impl Parser {
         let stmt = Stmt::Assignment(Assignment {
             kind: AssignmentKind::Reassignment,
             var_name,
+            indexes,
             init_value: Some(expr),
         });
 
@@ -733,6 +754,7 @@ mod tests {
                 lexeme: vec!['ল'],
                 line: 1,
             },
+            indexes: Vec::new(),
             init_value: Some(Expr::Primary(Primary::String("red".to_string()))),
         });
 
@@ -750,6 +772,7 @@ mod tests {
                 lexeme: vec!['ল'],
                 line: 1,
             },
+            indexes: Vec::new(),
             init_value: Some(Expr::Primary(Primary::String("red".to_string()))),
         });
 
