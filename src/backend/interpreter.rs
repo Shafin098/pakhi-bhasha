@@ -216,7 +216,7 @@ impl Interpreter {
                     // effective_index is index of deepest nested array, to which init_val will be assigned
                     let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
                     let mut evaluated_index_exprs: Vec<usize> = Vec::new();
-                    for i in 0..assign_stmt.indexes.len() - 1 {
+                    for i in 0..assign_stmt.indexes.len() {
                         let index = self.interpret_expr(assign_stmt.indexes[i].clone());
                         match  index {
                             DataType::Array(a) => {
@@ -248,36 +248,28 @@ impl Interpreter {
                                 return;
                             }
 
-                            let mut assignee: &mut DataType = arr.get_mut(0).unwrap();
-                            for (i, _) in assign_stmt.indexes.iter().enumerate() {
-                                if assign_stmt.indexes.len() == 1 {
-                                    match assignee {
-                                        DataType::Array(var_arr) => {
-                                            if let DataType::Num(index_of_var_arr) = effective_index {
-                                                var_arr[index_of_var_arr as usize] = init_value;
-                                            }
-                                        },
-                                        _ => {
-                                            panic!()
-                                        },
-                                    }
-                                    break;
-                                } else if i == assign_stmt.indexes.len() - 2 {
-                                    match assignee {
-                                        DataType::Array(var_arr) => {
-                                            if let DataType::Num(index_of_var_arr) = effective_index {
-                                                    var_arr[index_of_var_arr as usize] = init_value;
-                                            }
-                                        },
-                                        _ => {
-                                            println!("{:?}", assignee);
-                                            panic!()
-                                        },
-                                    }
-                                    break;
-                                }
+                            let mut assignee: &mut DataType = arr.get_mut(evaluated_index_exprs.get(0).unwrap().clone()).unwrap();
 
-                                assignee = arr.get_mut(evaluated_index_exprs[i]).unwrap();
+                            for i in 1..evaluated_index_exprs.len() {
+                                if i == evaluated_index_exprs.len() - 1 {
+                                    println!("end i {:?}", i);
+                                    println!("assignee {:?}", assignee);
+                                    match assignee {
+                                        DataType::Array(a) => {
+                                            let index = evaluated_index_exprs.get(i).unwrap();
+                                            a[index.clone()] = init_value.clone();
+                                        },
+                                        _ => panic!("Cannot assign at index if data type is not array"),
+                                    }
+                                } else {
+                                    match assignee {
+                                        DataType::Array(a) => {
+                                            let index = evaluated_index_exprs.get(i).unwrap();
+                                            assignee = a.get_mut(index.clone()).unwrap();
+                                        },
+                                        _ => panic!("Cannot index if not array"),
+                                    }
+                                }
                             }
                         },
                         _ => panic!("Variable wasn't initialized {:#}", var_key),
