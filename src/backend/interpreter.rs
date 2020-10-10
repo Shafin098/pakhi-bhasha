@@ -8,7 +8,9 @@ enum DataType {
     Num(f64),
     Bool(bool),
     String(String),
-    Array(Vec<DataType>),
+    // Array variant of DataType enum only stores the index of the actual array from arrays
+    // field in Interpreter, so multiple array reference implementation is easy.
+    Array(usize),
     Function(Func),
     Nil,
 }
@@ -33,6 +35,7 @@ struct Interpreter {
     return_addrs: Vec<usize>,
     envs: Vec<HashMap<String, Option<DataType>>>,
     previous_if_was_executed: Vec<bool>,
+    arrays: Vec<Vec<DataType>>,
 }
 
 impl Interpreter {
@@ -44,6 +47,7 @@ impl Interpreter {
             return_addrs: Vec::new(),
             envs: vec![HashMap::new()],
             previous_if_was_executed: Vec::new(),
+            arrays: Vec::new(),
         }
     }
 
@@ -137,16 +141,20 @@ impl Interpreter {
             DataType::Num(n) => print!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
             DataType::String(s) => print!("{}", s),
-            DataType::Array(arr) => {
+            DataType::Array(arr_i) => {
+                let mut elems: Vec<(usize, DataType)>  = Vec::new();
+                for (i, elem) in self.arrays[arr_i].iter().enumerate() {
+                    elems.push((i, elem.clone()));
+                }
                 print!("[");
-                for (i, elem) in arr.iter().enumerate() {
+                for (i, elem) in elems {
                     self.print_datatype(elem.clone());
-                    if (i+1) < arr.len() {
+                    if (i+1) < self.arrays[arr_i].len() {
                         print!(", ")
                     }
                 }
                 print!("]");
-            },
+            }
             _ => panic!("Datatype isn't implemented"),
         }
         self.current += 1;
@@ -157,16 +165,20 @@ impl Interpreter {
             DataType::Num(n) => print!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
             DataType::String(s) => print!("{}", s),
-            DataType::Array(a) => {
+            DataType::Array(arr_i) => {
+                let mut elems: Vec<(usize, DataType)>  = Vec::new();
+                for (i, elem) in self.arrays[arr_i].iter().enumerate() {
+                    elems.push((i.clone(), elem.clone()));
+                }
                 print!("[");
-                for (i, elem) in a.iter().enumerate() {
+                for (i, elem) in elems.clone() {
                     self.print_datatype(elem.clone());
-                    if (i+1) < a.len() {
+                    if (i+1) < self.arrays[arr_i].len() {
                         print!(", ")
                     }
                 }
                 print!("]");
-            },
+            }
             _ => panic!("Datatype isn't implemented"),
         }
     }
@@ -176,16 +188,20 @@ impl Interpreter {
             DataType::Num(n) => println!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => println!("{}", self.to_bn_bool(b)),
             DataType::String(s) => println!("{}", s),
-            DataType::Array(arr) => {
+            DataType::Array(arr_i) => {
+                let mut elems: Vec<(usize, DataType)>  = Vec::new();
+                for (i, elem) in self.arrays[arr_i].iter().enumerate() {
+                    elems.push((i, elem.clone()));
+                }
                 print!("[");
-                for (i, elem) in arr.iter().enumerate() {
+                for (i, elem) in elems.clone() {
                     self.print_datatype(elem.clone());
-                    if (i+1) < arr.len() {
+                    if (i+1) < self.arrays[arr_i].len() {
                         print!(", ")
                     }
                 }
                 println!("]");
-            },
+            }
             _ => panic!("Datatype printing isn't implemented"),
         }
         self.current += 1;
@@ -219,24 +235,28 @@ impl Interpreter {
                     for i in 0..assign_stmt.indexes.len() {
                         let index = self.interpret_expr(assign_stmt.indexes[i].clone());
                         match  index {
-                            DataType::Array(a) => {
-                                match a[0] {
+                            DataType::Array(arr_i) => {
+                                match self.arrays[arr_i][0] {
                                     DataType::Num(i) => evaluated_index_exprs.push(i as usize),
                                     _ => panic!(),
                                 }
-                            },
+                            }
                             _ => panic!(),
                         }
                     }
 
                     let var = self.envs[var_found_at_env_index as usize]
-                        .get_mut(var_key.as_str()).unwrap();
+                        .get(var_key.as_str()).unwrap();
 
                     match var {
-                        Some(DataType::Array(arr)) => {
+                        Some(DataType::Array(i)) => {
+                            let array_copy = self.arrays.clone();
+                            let arr = self.arrays.get_mut(*i).unwrap();
+
                             if assign_stmt.indexes.len() == 1 {
                                 match effective_index {
-                                    DataType::Array(a) => {
+                                    DataType::Array(j) => {
+                                        let a = array_copy[j].clone();
                                         match a[0] {
                                             DataType::Num(n) => arr[n as usize] = init_value,
                                             _ => panic!(),
@@ -248,24 +268,26 @@ impl Interpreter {
                                 return;
                             }
 
-                            let mut assignee: &mut DataType = arr.get_mut(evaluated_index_exprs.get(0).unwrap().clone()).unwrap();
+                            let mut assignee: DataType = arr.get(evaluated_index_exprs.get(0).unwrap().clone()).unwrap().clone();
 
                             for i in 1..evaluated_index_exprs.len() {
                                 if i == evaluated_index_exprs.len() - 1 {
-                                    println!("end i {:?}", i);
-                                    println!("assignee {:?}", assignee);
                                     match assignee {
-                                        DataType::Array(a) => {
+                                        DataType::Array(arr_i) => {
+                                            //let a = self.arrays.get_mut(arr_i).unwrap();
                                             let index = evaluated_index_exprs.get(i).unwrap();
-                                            a[index.clone()] = init_value.clone();
+                                            self.arrays[arr_i][index.clone()] = init_value.clone();
+                                            //a[index.clone()] = init_value.clone();
+                                            break;
                                         },
                                         _ => panic!("Cannot assign at index if data type is not array"),
                                     }
                                 } else {
                                     match assignee {
-                                        DataType::Array(a) => {
+                                        DataType::Array(arr_i) => {
+                                            let a = self.arrays.get_mut(arr_i).unwrap();
                                             let index = evaluated_index_exprs.get(i).unwrap();
-                                            assignee = a.get_mut(index.clone()).unwrap();
+                                            assignee = a.get(index.clone()).unwrap().clone();
                                         },
                                         _ => panic!("Cannot index if not array"),
                                     }
@@ -310,7 +332,7 @@ impl Interpreter {
                     let func_name: String = func_token.lexeme.iter().collect();
                     let func_args = function.arguments;
                     let mut func_args_name: Vec<String> = Vec::new();
-                    //println!("{:#?}", func_args);
+
                     for arg_expr in func_args {
                         match arg_expr {
                             parser::Expr::Primary(parser::Primary::Var(name_token)) => {
@@ -435,7 +457,10 @@ impl Interpreter {
         let index = self.interpret_expr(*index);
 
         match (identifier, index) {
-            (DataType::Array(arr), DataType::Num(i)) => return arr[i as usize].clone(),
+            (DataType::Array(arr_i), DataType::Num(i)) => {
+                let arr = self.arrays[arr_i].clone();
+                return arr[i as usize].clone()
+            },
             (_, DataType::Num(_)) => panic!("Indexing only possible with array"),
             (DataType::Array(_), _) => panic!("Array index must evaluate to number type"),
             _ => panic!("Invalid indexing format"),
@@ -519,7 +544,8 @@ impl Interpreter {
                     pakhi_array.push(self.interpret_expr(elem));
                 }
 
-                return DataType::Array(pakhi_array);
+                self.arrays.push(pakhi_array);
+                return DataType::Array(self.arrays.len() - 1);
             },
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
         }
@@ -588,12 +614,19 @@ impl Interpreter {
                 }
                 panic!("Invalid operation on String");
             },
-            (DataType::Array(ref mut left_arr), DataType::Array(ref mut right_arr)) => {
+            (DataType::Array(ref mut left_arr_i), DataType::Array(ref mut right_arr_i)) => {
+                let left_arr = self.arrays.get(*left_arr_i).unwrap().clone();
+                let right_arr = self.arrays.get(*right_arr_i).unwrap().clone();
                 if addsub_expr.operator == TokenKind::Plus {
-                    for elem in right_arr.iter() {
-                        left_arr.push(elem.clone());
+                    let mut concatted_arr: Vec<DataType> = Vec::new();
+                    for elem in left_arr {
+                        concatted_arr.push(elem);
                     }
-                    return DataType::Array(left_arr.clone());
+                    for elem in right_arr {
+                        concatted_arr.push(elem);
+                    }
+                    self.arrays.push(concatted_arr);
+                    return DataType::Array(self.arrays.len() - 1);
                 }
                 panic!("Invalid operation on Arry")
             }
@@ -620,32 +653,30 @@ impl Interpreter {
     }
 
     fn interpret_eq_expr(&mut self, eq_expr: parser::Binary) -> DataType {
-        let right_expr_val = self.interpret_expr(*eq_expr.right);
-        let left_expr_val = self.interpret_expr(*eq_expr.left);
+        let evaluated_left_expr = self.interpret_expr(*eq_expr.left);
+        let evaluated_right_expr = self.interpret_expr(*eq_expr.right);
 
         match eq_expr.operator {
-            TokenKind::EqualEqual => DataType::Bool(right_expr_val == left_expr_val),
-            TokenKind::NotEqual =>  DataType::Bool(right_expr_val != left_expr_val),
+            TokenKind::EqualEqual => DataType::Bool(evaluated_left_expr == evaluated_right_expr),
+            TokenKind::NotEqual =>  DataType::Bool(evaluated_left_expr != evaluated_right_expr ),
             _ => panic!()
         }
     }
 
     fn interpret_comp_expr(&mut self, comp_expr: parser::Binary) -> DataType {
-        let right_expr_val = self.interpret_expr(*comp_expr.right);
-        let left_expr_val = self.interpret_expr(*comp_expr.left);
+        let evaluated_left_expr = self.interpret_expr(*comp_expr.left);
+        let evaluated_right_expr = self.interpret_expr(*comp_expr.right);
 
-        if let DataType::Bool(_b) = right_expr_val {
-            if let DataType::Bool(_b) = left_expr_val {
-                panic!();
-            }
-            panic!();
-        }
-
-        match comp_expr.operator {
-            TokenKind::GreaterThan => DataType::Bool(left_expr_val > right_expr_val),
-            TokenKind::GreaterThanOrEqual =>  DataType::Bool(left_expr_val >= right_expr_val),
-            TokenKind::LessThan =>  DataType::Bool(left_expr_val < right_expr_val),
-            TokenKind::LessThanOrEqual =>  DataType::Bool(left_expr_val <= right_expr_val),
+        match (evaluated_left_expr.clone(), evaluated_right_expr.clone()) {
+            (DataType::Num(_), DataType::Num(_)) => {
+                match comp_expr.operator {
+                    TokenKind::GreaterThan => DataType::Bool(evaluated_left_expr > evaluated_right_expr),
+                    TokenKind::GreaterThanOrEqual => DataType::Bool(evaluated_left_expr >= evaluated_right_expr),
+                    TokenKind::LessThan => DataType::Bool(evaluated_left_expr < evaluated_right_expr),
+                    TokenKind::LessThanOrEqual => DataType::Bool(evaluated_left_expr <= evaluated_right_expr),
+                    _ => panic!()
+                }
+            },
             _ => panic!()
         }
     }
