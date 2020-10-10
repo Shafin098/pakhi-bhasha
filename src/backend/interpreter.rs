@@ -571,8 +571,8 @@ impl Interpreter {
     }
 
     fn interpret_addsub_expr(&mut self, addsub_expr: parser::Binary) -> DataType {
-        let right_expr_val = self.interpret_expr(*addsub_expr.right);
         let left_expr_val = self.interpret_expr(*addsub_expr.left);
+        let right_expr_val = self.interpret_expr(*addsub_expr.right);
 
         match (left_expr_val, right_expr_val) {
             (DataType::Num(left), DataType::Num(right)) => {
@@ -586,10 +586,18 @@ impl Interpreter {
                 if addsub_expr.operator == TokenKind::Plus {
                     return DataType::String(format!("{}{}", left_str, right_str));
                 }
-
-                panic!("Invalid operation on string");
+                panic!("Invalid operation on String");
             },
-            _ => panic!("Invalid operation, data type mismatched"),
+            (DataType::Array(ref mut left_arr), DataType::Array(ref mut right_arr)) => {
+                if addsub_expr.operator == TokenKind::Plus {
+                    for elem in right_arr.iter() {
+                        left_arr.push(elem.clone());
+                    }
+                    return DataType::Array(left_arr.clone());
+                }
+                panic!("Invalid operation on Arry")
+            }
+            _ => panic!("Invalid operation, operand doesn't support this operation"),
         }
     }
 
