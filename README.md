@@ -1,6 +1,13 @@
 ## Introduction
 Pakhi is a dynamically typed, general purpose programming language with bangla script written in rust.
 ## Language basics
+#### Data Types
+- __সংখ্যা
+- __বুলিয়ান
+- __স্ট্রিং
+- __লিস্ট
+- __ফাং
+- __শূন্য
 #### Variable declaration
 ```
 নাম মাস = ১;
