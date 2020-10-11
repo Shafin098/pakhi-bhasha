@@ -1,13 +1,13 @@
 ## Introduction
 Pakhi is a dynamically typed, general purpose programming language with bangla script written in rust.
 ## Language basics
-#### Data Types
-- __সংখ্যা
-- __বুলিয়ান
-- __স্ট্রিং
-- __লিস্ট
-- __ফাং
-- __শূন্য
+#### PrimitiveTypes
+- _সংখ্যা_
+- _বুলিয়ান_
+- _স্ট্রিং_
+- _লিস্ট_
+- _ফাং_
+- _শূন্য_
 #### Variable declaration
 ```
 নাম মাস = ১;
@@ -26,14 +26,18 @@ Pakhi is a dynamically typed, general purpose programming language with bangla s
 ```
 #### Loop statement
 ```
-নাম কাউন্টার = ১;
+নাম সংখ্যা = [১, ২, ৩, ৪, ৫];
+নাম ইন্ডেক্স = ১;
+নাম যোগফল = ০;
 লুপ {
-  যদি কাউন্টার > ১০০ {
-    থামাও;
-  }
-  দেখাও কাউন্টার;
-  কাউন্টার = কাউন্টার + ১;
+    যদি কাউন্টার > ৪ {
+        থামাও;
+    }
+    যোগফল = যোগফল + সংখ্যা[ইন্ডেক্স];
+    ইন্ডেক্স = ইন্ডেক্স + ১;
 } আবার;
+_দেখাও "ফলাফল = ";
+দেখাও যোগফল;
 ```
 #### Function declaration and function call
 ```
@@ -49,7 +53,8 @@ Pakhi is a dynamically typed, general purpose programming language with bangla s
 জোড়(স);
 ```
 ## How to get pakhi on my computer?
-* Get pre compiled binary from [pakhi.exe](https://github.com/Shafin098/pakhi-bhasha/releases)  Note: Download only pakhi.exe from Assets menu
-* Add pakhi as your Path environment variable
-* Write a pakhi program (Use example from above).
-* Run your program (extension should be .pakhi) with `pakhi source_file_name.pakhi` command
+* Get rar file from [pakhi-v0.2-alpha](https://github.com/Shafin098/pakhi-bhasha/releases)
+* Add pakhi-v0.2-alpha/bin to your Path environment variable
+* Open cmd and type `pakhi`. If no error shows pakhi was added to your path variable.
+* Write a pakhi program (Use any example from above).
+* Run your program (extension should be .pakhi) with `pakhi source_file_name.pakhi` command (Note: use unicode supported command processor (not cmd or powershell), windows terminal or terminal in vs-code can be used)
