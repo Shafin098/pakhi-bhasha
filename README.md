@@ -54,7 +54,7 @@ _দেখাও "ফলাফল = ";
 ```
 ## How to get pakhi on my computer?
 * Get rar file from [pakhi-v0.2-alpha](https://github.com/Shafin098/pakhi-bhasha/releases)
-* Add pakhi-v0.2-alpha/bin to your Path environment variable
-* Open cmd and type `pakhi`. If no error shows pakhi was added to your path variable.
-* Write a pakhi program (Use any example from above).
+* Extract and add full path to `pakhi-v0.2-alpha/bin` to your `Path` environment variable
+* Open cmd and type `pakhi`. If no error shows pakhi was added to your path variable
+* Write a pakhi program (Use any example from above)
 * Run your program (extension should be .pakhi) with `pakhi source_file_name.pakhi` command (Note: use unicode supported command processor (not cmd or powershell), windows terminal or terminal in vs-code can be used)
