@@ -27,10 +27,10 @@ Pakhi is a dynamically typed, general purpose programming language with bangla s
 #### Loop statement
 ```
 নাম সংখ্যা = [১, ২, ৩, ৪, ৫];
-নাম ইন্ডেক্স = ১;
+নাম ইন্ডেক্স = ০;
 নাম যোগফল = ০;
 লুপ {
-    যদি কাউন্টার > ৪ {
+    যদি ইন্ডেক্স > ৪ {
         থামাও;
     }
     যোগফল = যোগফল + সংখ্যা[ইন্ডেক্স];
