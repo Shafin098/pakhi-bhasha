@@ -140,7 +140,7 @@ impl Interpreter {
         match self.interpret_expr(expr) {
             DataType::Num(n) => print!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => print!("{}", s),
+            DataType::String(s) => print!("\"{}\"", s),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {
@@ -164,7 +164,7 @@ impl Interpreter {
         match data {
             DataType::Num(n) => print!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => print!("{}", s),
+            DataType::String(s) => print!("\"{}\"", s),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {
@@ -187,7 +187,7 @@ impl Interpreter {
         match self.interpret_expr(expr) {
             DataType::Num(n) => println!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => println!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => println!("{}", s),
+            DataType::String(s) => println!("\"{}\"", s),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {
@@ -467,37 +467,46 @@ impl Interpreter {
         }
     }
 
+    fn built_in_fn_list_push(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 2 {
+            let list = self.interpret_expr(f.arguments[0].clone());
+            if let DataType::Array(index) = list {
+                let push_value = self.interpret_expr(f.arguments[1].clone());
+                let actual_list = self.arrays.get_mut(index).unwrap();
+                actual_list.push(push_value);
+            } else { panic!("Datatype must be array to push value")}
+
+        } else { panic!("Function requires two arguments")}
+
+        return DataType::Nil;
+    }
+
+    fn built_in_fn_list_pop(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 1 {
+            let list = self.interpret_expr(f.arguments[0].clone());
+            if let DataType::Array(index) = list {
+                let actual_list = self.arrays.get_mut(index).unwrap();
+                actual_list.pop();
+            } else { panic!("Datatype must be array to push value")}
+
+        } else { panic!("Function requires one argument")}
+
+        return DataType::Nil;
+    }
+
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
         let env_count_before_fn_call = self.envs.len();
 
-        match *f.expr {
+        match *f.expr.clone() {
             parser::Expr::Primary(parser::Primary::Var(func_token)) => {
-                let func_token_clone = func_token.clone();
-                if func_token_clone.lexeme == "_লিস্ট-পুশ".chars().collect::<Vec<char>>() {
+                // if any of the if consition equals true its a built in function
+                // user defined  functions ar handled in else clause
+                let func_name = func_token.lexeme.clone();
 
-                    if f.arguments.len() == 2 {
-                        let list = self.interpret_expr(f.arguments[0].clone());
-                        if let DataType::Array(index) = list {
-                            let push_value = self.interpret_expr(f.arguments[1].clone());
-                            let actual_list = self.arrays.get_mut(index).unwrap();
-                            actual_list.push(push_value);
-                        } else { panic!("Datatype must be array to push value")}
-
-                    } else { panic!("Function requires two arguments")}
-
-                    return DataType::Nil;
-
-                } else if func_token_clone.lexeme == "_লিস্ট-পপ".chars().collect::<Vec<char>>(){
-                    if f.arguments.len() == 1 {
-                        let list = self.interpret_expr(f.arguments[0].clone());
-                        if let DataType::Array(index) = list {
-                            let actual_list = self.arrays.get_mut(index).unwrap();
-                            actual_list.pop();
-                        } else { panic!("Datatype must be array to push value")}
-
-                    } else { panic!("Function requires one argument")}
-
-                    return DataType::Nil;
+                if func_name == "_লিস্ট-পুশ".chars().collect::<Vec<char>>() {
+                    return self.built_in_fn_list_push(&f);
+                } else if func_name == "_লিস্ট-পপ".chars().collect::<Vec<char>>(){
+                    return self.built_in_fn_list_pop(&f);
                 } else {
                     // assumes function was user-defined function
                     // this block checks if function was declared,
