@@ -53,32 +53,32 @@ _দেখাও "ফলাফল = ";
 জোড়(স);
 ```
 #### Builtin functions
-Add a new element to end of a list
+```_লিস্ট-পুশ(লিস্ট, মান)``` adds a new element to end of a list
 ```
 নাম লিস্ট = [১, ২, ৩];
 _লিস্ট-পুশ(লিস্ট, ৪);
 দেখাও লিস্ট;
 ```
-Add a new element at specific index 
+```_লিস্ট-পুশ(লিস্ট, ইন্ডেক্স, মান)``` adds a new element at specific index 
 ```
 নাম লিস্ট = [১, ২, ৩];
 _লিস্ট-পুশ(লিস্ট, ০, ৪);
 দেখাও লিস্ট;
 ```
-Remove last element from list with 
+```_লিস্ট-পপ(লিস্ট)``` removes last element from list
 ```
 নাম লিস্ট = [১, ২, ৩];
-_লিস্ট-পপ(লিস্ট)
+_লিস্ট-পপ(লিস্ট);
 দেখাও লিস্ট;
 ```
-Remove element at a specific index with 
+```_লিস্ট-পপ(লিস্ট, ইন্ডেক্স)``` removes element at a specific index
 ```
 নাম লিস্ট = [১, ২, ৩];
-_লিস্ট-পপ(লিস্ট, ১)
+_লিস্ট-পপ(লিস্ট, ১);
 দেখাও লিস্ট;
 ```
 ## How to get pakhi on my computer?
-* Get rar file from [pakhi-v0.2-alpha](https://github.com/Shafin098/pakhi-bhasha/releases)
+* Get rar file from [pakhi-v0.3-alpha](https://github.com/Shafin098/pakhi-bhasha/releases)
 * Extract and add full path to `pakhi-v0.3-alpha/bin` to your `Path` environment variable
 * Open cmd and type `pakhi`. If no error shows pakhi was added to your path variable
 * Write a pakhi program (Use any example from above)
