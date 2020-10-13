@@ -470,13 +470,31 @@ impl Interpreter {
     fn built_in_fn_list_push(&mut self, f: &parser::FunctionCall) -> DataType {
         if f.arguments.len() == 2 {
             let list = self.interpret_expr(f.arguments[0].clone());
+
             if let DataType::Array(index) = list {
                 let push_value = self.interpret_expr(f.arguments[1].clone());
                 let actual_list = self.arrays.get_mut(index).unwrap();
                 actual_list.push(push_value);
-            } else { panic!("Datatype must be array to push value")}
+            } else {
+                panic!("Datatype must be array to push value")
+            }
 
-        } else { panic!("Function requires two arguments")}
+        } else if f.arguments.len() == 3 {
+            let list = self.interpret_expr(f.arguments[0].clone());
+
+            if let DataType::Array(index) = list {
+                let push_at = self.interpret_expr(f.arguments[1].clone());
+                let push_value = self.interpret_expr(f.arguments[2].clone());
+                let actual_list = self.arrays.get_mut(index).unwrap();
+
+                if let DataType::Num(push_at_i_f) = push_at {
+                    let push_at_u = push_at_i_f as usize;
+                    actual_list.insert(push_at_u, push_value);
+                } else { panic!("Index must evaluate to number type"); }
+
+            } else { panic!("Datatype must be array to push value") }
+
+        } else { panic!("Function requires two arguments") }
 
         return DataType::Nil;
     }
@@ -484,9 +502,24 @@ impl Interpreter {
     fn built_in_fn_list_pop(&mut self, f: &parser::FunctionCall) -> DataType {
         if f.arguments.len() == 1 {
             let list = self.interpret_expr(f.arguments[0].clone());
+
             if let DataType::Array(index) = list {
                 let actual_list = self.arrays.get_mut(index).unwrap();
                 actual_list.pop();
+            } else { panic!("Datatype must be array to push value")}
+
+        } else if f.arguments.len() == 2 {
+            let list = self.interpret_expr(f.arguments[0].clone());
+
+            if let DataType::Array(index) = list {
+                let pop_at = self.interpret_expr(f.arguments[1].clone());
+                let actual_list = self.arrays.get_mut(index).unwrap();
+
+                if let DataType::Num(pop_at_i_f) = pop_at {
+                    let pop_at_i = pop_at_i_f as usize;
+                    actual_list.remove(pop_at_i);
+                }
+
             } else { panic!("Datatype must be array to push value")}
 
         } else { panic!("Function requires one argument")}
