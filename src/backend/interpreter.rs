@@ -472,35 +472,70 @@ impl Interpreter {
 
         match *f.expr {
             parser::Expr::Primary(parser::Primary::Var(func_token)) => {
-                let func = self.interpret_var(func_token);
+                let func_token_clone = func_token.clone();
+                if func_token_clone.lexeme == "_লিস্ট-পুশ".chars().collect::<Vec<char>>() {
 
-                if let DataType::Function(func) = func {
-                    let mut root_env: HashMap<String, Option<DataType>> = HashMap::new();
-                    for i in 0..func.args.len() {
-                        if i < f.arguments.len() {
-                            root_env.insert(func.args[i].clone(), Option::from(self.interpret_expr(f.arguments[i].clone())));
-                        } else {
-                            // not enough arguments passed so assigning Nil
-                            root_env.insert(func.args[i].clone(), Option::from(DataType::Nil));
-                        }
-                    }
+                    if f.arguments.len() == 2 {
+                        let list = self.interpret_expr(f.arguments[0].clone());
+                        if let DataType::Array(index) = list {
+                            let push_value = self.interpret_expr(f.arguments[1].clone());
+                            let actual_list = self.arrays.get_mut(index).unwrap();
+                            actual_list.push(push_value);
+                        } else { panic!("Datatype must be array to push value")}
 
-                    // root key indicates its a functions root env
-                    root_env.insert("root".to_string(), Some(DataType::Nil));
+                    } else { panic!("Function requires two arguments")}
 
-                    // creating root_envs
-                    self.envs.push(root_env);
+                    return DataType::Nil;
 
-                    self.return_addrs.push(self.current);
+                } else if func_token_clone.lexeme == "_লিস্ট-পপ".chars().collect::<Vec<char>>(){
+                    if f.arguments.len() == 1 {
+                        let list = self.interpret_expr(f.arguments[0].clone());
+                        if let DataType::Array(index) = list {
+                            let actual_list = self.arrays.get_mut(index).unwrap();
+                            actual_list.pop();
+                        } else { panic!("Datatype must be array to push value")}
 
-                    // pointing current to functions starting statement
-                    self.current = func.starting_statement;
+                    } else { panic!("Function requires one argument")}
+
+                    return DataType::Nil;
                 } else {
-                    panic!("Function not Declared");
+                    // assumes function was user-defined function
+                    // this block checks if function was declared,
+                    // sets up environment, inserts args to new environment
+                    // and saves return address for function call
+                    let func = self.interpret_var(func_token);
+
+                    if let DataType::Function(func) = func {
+                        let mut root_env: HashMap<String, Option<DataType>> = HashMap::new();
+                        for i in 0..func.args.len() {
+                            if i < f.arguments.len() {
+                                root_env.insert(func.args[i].clone(), Option::from(self.interpret_expr(f.arguments[i].clone())));
+                            } else {
+                                // not enough arguments passed so assigning Nil
+                                root_env.insert(func.args[i].clone(), Option::from(DataType::Nil));
+                            }
+                        }
+
+                        // root key indicates its a functions root env
+                        root_env.insert("root".to_string(), Some(DataType::Nil));
+
+                        // creating root_envs
+                        self.envs.push(root_env);
+
+                        self.return_addrs.push(self.current);
+
+                        // pointing current to functions starting statement
+                        self.current = func.starting_statement;
+                    } else {
+                        panic!("Function not Declared");
+                    }
                 }
+
             },
             _ => panic!(),
         }
+
+        // jumping to function start and starting executing statements in function body
 
         assert_eq!(parser::Stmt::BlockStart, self.statements[self.current]);
         // interpreting all statements inside function body
