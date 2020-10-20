@@ -520,11 +520,20 @@ impl Interpreter {
                     actual_list.remove(pop_at_i);
                 }
 
-            } else { panic!("Datatype must be array to push value")}
+            } else { panic!("Datatype must be array to push value") }
 
-        } else { panic!("Function requires one argument")}
+        } else { panic!("Function requires one argument") }
 
         return DataType::Nil;
+    }
+
+    fn built_in_fn_read_line(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 0 {
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).expect("Error reading from stdin");
+            return DataType::String(input.trim_end().into());
+        } else { panic!("Function requires zero argument") }
+
     }
 
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
@@ -532,7 +541,7 @@ impl Interpreter {
 
         match *f.expr.clone() {
             parser::Expr::Primary(parser::Primary::Var(func_token)) => {
-                // if any of the if consition equals true its a built in function
+                // if any of the if condition equals true its a built in function
                 // user defined  functions ar handled in else clause
                 let func_name = func_token.lexeme.clone();
 
@@ -540,6 +549,8 @@ impl Interpreter {
                     return self.built_in_fn_list_push(&f);
                 } else if func_name == "_লিস্ট-পপ".chars().collect::<Vec<char>>(){
                     return self.built_in_fn_list_pop(&f);
+                } else if func_name == "_রিড-লাইন".chars().collect::<Vec<char>>() {
+                    return self.built_in_fn_read_line(&f);
                 } else {
                     // assumes function was user-defined function
                     // this block checks if function was declared,
