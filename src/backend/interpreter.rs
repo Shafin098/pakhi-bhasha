@@ -530,8 +530,10 @@ impl Interpreter {
     fn built_in_fn_read_line(&mut self, f: &parser::FunctionCall) -> DataType {
         if f.arguments.len() == 0 {
             let mut input = String::new();
-            std::io::stdin().read_line(&mut input).expect("Error reading from stdin");
-            return DataType::String(input.trim_end().into());
+            match std::io::stdin().read_line(&mut input) {
+                Ok(_) => return DataType::String(input.trim_end().into()),
+                Err(e) => panic!("{}", e),
+            }
         } else { panic!("Function requires zero argument") }
 
     }
