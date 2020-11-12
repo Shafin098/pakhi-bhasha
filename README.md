@@ -87,6 +87,6 @@ _লিস্ট-পপ(লিস্ট, ১);
 * Download only [pakhi-setup.exe](https://github.com/Shafin098/pakhi-bhasha/releases) from Assets
 * Complete setup
 * Write a pakhi program (Use any example from above)
-* Open Pakhi Runner and browse source file
+* Open Pakhi and browse source file
 * Run your program (extension should be .pakhi)
 * To run pakhi program from cmd or powershell add ```C:\Program Files\Pakhi\bin``` to your path environment variable. ***Note: Bangla text will not properly show***
