@@ -9,10 +9,10 @@ use pakhi::interpreter;
 fn main() {
     match src_path() {
         Ok(filename) => {
-            println!("Source file: {}", filename);
+            //println!("Source file: {}", filename);
             match src_string(&filename) {
                 Ok(src_string) => {
-                    println!("{}", src_string);
+                    // println!("{}", src_string);
                     let src_chars: Vec<char> = src_string.chars().collect();
                     let tokens = lexer::tokenize(src_chars);
                     //for t in &tokens {
@@ -21,9 +21,9 @@ fn main() {
                     let ast_tree = parser::parse(tokens);
                     //println!("Ast : {:#?}", ast_tree);
 
-                    println!();
-                    println!("Interpreter");
-                    println!("____________");
+                    // println!();
+                    // println!("Interpreter");
+                    // println!("____________");
                     interpreter::run(ast_tree);
                 },
                 Err(e) => eprintln!("{}", e),
@@ -40,7 +40,11 @@ fn src_path() -> Result<String, &'static str> {
     } else if args.len() > 2 {
         Err("Only one filename required.")
     } else {
-        Ok(args[1].clone())
+        if args[1].ends_with(".pakhi") {
+            Ok(args[1].clone())
+        } else {
+            Err("Source file must have .pakhi extension.")
+        }
     }
 }
 

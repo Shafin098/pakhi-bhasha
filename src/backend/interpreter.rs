@@ -164,7 +164,7 @@ impl Interpreter {
         match data {
             DataType::Num(n) => print!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => print!("\"{}\"", s),
+            DataType::String(s) => print!("{}", s),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {
@@ -187,7 +187,7 @@ impl Interpreter {
         match self.interpret_expr(expr) {
             DataType::Num(n) => println!("{}", self.to_bn_num(n)),
             DataType::Bool(b) => println!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => println!("\"{}\"", s),
+            DataType::String(s) => println!("{}", s),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {

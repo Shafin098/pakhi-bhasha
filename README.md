@@ -53,6 +53,12 @@ _দেখাও "ফলাফল = ";
 জোড়(স);
 ```
 #### Builtin functions
+```_রিড-লাইন()``` reads a line from stdin
+```
+দেখাও "কিছু টাইপ করুনঃ ";
+নাম ক = _রিড-লাইন();
+দেখাও ক;
+```
 ```_লিস্ট-পুশ(লিস্ট, মান)``` adds a new element to end of a list
 ```
 নাম লিস্ট = [১, ২, ৩];
@@ -78,8 +84,9 @@ _লিস্ট-পপ(লিস্ট, ১);
 দেখাও লিস্ট;
 ```
 ## How to get pakhi on my computer?
-* Get rar file from [pakhi-v0.3-alpha](https://github.com/Shafin098/pakhi-bhasha/releases)
-* Extract and add full path to `pakhi-v0.3-alpha/bin` to your `Path` environment variable
-* Open cmd and type `pakhi`. If no error shows pakhi was added to your path variable
+* Download [pakhi-setup.exe](https://github.com/Shafin098/pakhi-bhasha/releases)
+* Complete setup
 * Write a pakhi program (Use any example from above)
-* Run your program (extension should be .pakhi) with `pakhi source_file_name.pakhi` command (Note: use unicode supported command processor (not cmd or powershell), windows terminal or terminal in vs-code can be used)
+* Open Pakhi Runner and browse source file
+* Run your program (extension should be .pakhi)
+* To run pakhi program from cmd or powershell add ```C:\Program Files\Pakhi\bin``` to your path environment variable. ***Note: Bangla text will not properly show***
