@@ -84,7 +84,7 @@ _লিস্ট-পপ(লিস্ট, ১);
 দেখাও লিস্ট;
 ```
 ## How to get pakhi on my computer?
-* Download [pakhi-setup.exe](https://github.com/Shafin098/pakhi-bhasha/releases)
+* Download only [pakhi-setup.exe](https://github.com/Shafin098/pakhi-bhasha/releases) from Assets
 * Complete setup
 * Write a pakhi program (Use any example from above)
 * Open Pakhi Runner and browse source file
