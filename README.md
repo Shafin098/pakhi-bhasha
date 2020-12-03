@@ -90,3 +90,5 @@ _লিস্ট-পপ(লিস্ট, ১);
 * Open Pakhi and browse source file
 * Run your program (extension should be .pakhi)
 * To run pakhi program from cmd or powershell add ```C:\Program Files\Pakhi\bin``` to your path environment variable. ***Note: Bangla text will not properly show***
+## Supported by JetBrains
+<a href="https://www.jetbrains.com/?from=pakhi-bhasha" target="_blank"><img src="https://raw.githubusercontent.com/Shafin098/pakhi-bhasha/master/svg/jetbrains.svg?raw=true"></a>
