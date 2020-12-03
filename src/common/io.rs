@@ -25,6 +25,7 @@ impl IO for RealIO {
     }
 }
 
+#[derive(Debug)]
 pub struct MockIO {
     print: Vec<String>,
     println: Vec<String>,
