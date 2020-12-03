@@ -35,27 +35,34 @@ pub struct MockIO {
 }
 
 impl MockIO {
-    fn expect_print(&mut self, m: &str) {
+    pub fn expect_print(&mut self, m: &str) {
         self.expected_print.push(String::from(m));
     }
 
-    fn expect_println(&mut self, m: &str) {
+    pub fn expect_println(&mut self, m: &str) {
         self.expected_println.push(String::from(m));
     }
 
-    fn expect_error(&mut self, m: &str) {
+    pub fn expect_error(&mut self, m: &str) {
         self.expected_error.push(String::from(m));
     }
 
-    fn assert_all_true(&self) -> bool {
+    pub fn assert_all_true(&self) -> bool {
         self.expected_print.eq(&self.print) && self.expected_println.eq(&self.println) &&
             self.expected_error.eq(&self.expected_error)
     }
 }
 
 impl IO for MockIO {
-    fn new() -> RealIO {
-        RealIO
+    fn new() -> MockIO {
+        MockIO {
+            print: Vec::new(),
+            println: Vec::new(),
+            error: Vec::new(),
+            expected_print: Vec::new(),
+            expected_println: Vec::new(),
+            expected_error: Vec::new(),
+        }
     }
 
     fn print(&mut self, m: &str) {

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use crate::frontend::parser;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
+use crate::common::io::{IO, RealIO, MockIO};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum DataType {
@@ -28,7 +29,7 @@ struct LoopEnv {
     total_envs_at_loop_creation: usize,
 }
 
-struct Interpreter {
+struct Interpreter<'a, T: IO> {
     current: usize,
     statements: Vec<parser::Stmt>,
     loops: Vec<LoopEnv>,
@@ -36,10 +37,11 @@ struct Interpreter {
     envs: Vec<HashMap<String, Option<DataType>>>,
     previous_if_was_executed: Vec<bool>,
     arrays: Vec<Vec<DataType>>,
+    io: &'a mut T,
 }
 
-impl Interpreter {
-    fn new(statements: Vec<parser::Stmt>) -> Interpreter {
+impl<T: IO> Interpreter<'_, T> {
+    fn new(statements: Vec<parser::Stmt>, io: &mut T) -> Interpreter<T> {
         Interpreter {
             current: 0,
             statements,
@@ -48,6 +50,7 @@ impl Interpreter {
             envs: vec![HashMap::new()],
             previous_if_was_executed: Vec::new(),
             arrays: Vec::new(),
+            io: io,
         }
     }
 
@@ -185,9 +188,9 @@ impl Interpreter {
 
     fn interpret_print_stmt(&mut self, expr: parser::Expr) {
         match self.interpret_expr(expr) {
-            DataType::Num(n) => println!("{}", self.to_bn_num(n)),
-            DataType::Bool(b) => println!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => println!("{}", s),
+            DataType::Num(n) => self.io.println(self.to_bn_num(n).as_str()),
+            DataType::Bool(b) => self.io.println(self.to_bn_bool(b).as_str()),
+            DataType::String(s) => self.io.println( s.as_str()),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {
@@ -200,7 +203,7 @@ impl Interpreter {
                         print!(", ")
                     }
                 }
-                println!("]");
+                self.io.println("]");
             }
             _ => panic!("Datatype printing isn't implemented"),
         }
@@ -827,6 +830,30 @@ impl Interpreter {
 }
 
 pub fn run(ast: Vec<parser::Stmt>) {
-    let mut interpreter = Interpreter::new(ast);
+    let mut real_io = RealIO::new();
+    let mut interpreter = Interpreter::new(ast, &mut real_io);
     interpreter.run();
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lexer;
+    use crate::parser;
+    use crate::common::io::{MockIO, IO};
+    use crate::backend::interpreter::Interpreter;
+
+    #[test]
+    fn var_decl_test1() {
+        let src_chars: Vec<char> = "নাম ক = ১;\nদেখাও ক;".chars().collect();
+        let tokens = lexer::tokenize(src_chars);
+        let ast = parser::parse(tokens);
+
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("১");
+
+        let mut interpreter = Interpreter::new(ast, &mut mock_io);
+        interpreter.run();
+
+        assert_eq!(mock_io.assert_all_true(), true);
+    }
 }
