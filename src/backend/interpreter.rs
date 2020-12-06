@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::frontend::parser;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
-use crate::common::io::{IO, RealIO, MockIO};
+use crate::common::io::{IO, RealIO};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum DataType {
@@ -141,22 +141,22 @@ impl<T: IO> Interpreter<'_, T> {
 
     fn interpret_print_no_eol(&mut self, expr: parser::Expr) {
         match self.interpret_expr(expr) {
-            DataType::Num(n) => print!("{}", self.to_bn_num(n)),
-            DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => print!("\"{}\"", s),
+            DataType::Num(n) => self.io.print( self.to_bn_num(n).as_str()),
+            DataType::Bool(b) => self.io.print( self.to_bn_bool(b).as_str()),
+            DataType::String(s) => self.io.print(format!("\"{}\"", s).as_str()),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {
                     elems.push((i, elem.clone()));
                 }
-                print!("[");
+                self.io.print("[");
                 for (i, elem) in elems {
                     self.print_datatype(elem.clone());
                     if (i+1) < self.arrays[arr_i].len() {
-                        print!(", ")
+                        self.io.print(", ")
                     }
                 }
-                print!("]");
+                self.io.print("]");
             }
             _ => panic!("Datatype isn't implemented"),
         }
@@ -165,22 +165,22 @@ impl<T: IO> Interpreter<'_, T> {
 
     fn print_datatype(&mut self, data: DataType) {
         match data {
-            DataType::Num(n) => print!("{}", self.to_bn_num(n)),
-            DataType::Bool(b) => print!("{}", self.to_bn_bool(b)),
-            DataType::String(s) => print!("{}", s),
+            DataType::Num(n) => self.io.print( self.to_bn_num(n).as_str()),
+            DataType::Bool(b) => self.io.print( self.to_bn_bool(b).as_str()),
+            DataType::String(s) => self.io.print(s.as_str()),
             DataType::Array(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.arrays[arr_i].iter().enumerate() {
                     elems.push((i.clone(), elem.clone()));
                 }
-                print!("[");
+                self.io.print("[");
                 for (i, elem) in elems.clone() {
                     self.print_datatype(elem.clone());
                     if (i+1) < self.arrays[arr_i].len() {
-                        print!(", ")
+                        self.io.print(", ")
                     }
                 }
-                print!("]");
+                self.io.print("]");
             }
             _ => panic!("Datatype isn't implemented"),
         }
@@ -841,19 +841,199 @@ mod tests {
     use crate::parser;
     use crate::common::io::{MockIO, IO};
     use crate::backend::interpreter::Interpreter;
+    use crate::frontend::parser::Stmt;
 
-    #[test]
-    fn var_decl_test1() {
-        let src_chars: Vec<char> = "নাম ক = ১;\nদেখাও ক;".chars().collect();
+    fn src_to_ast(src_lines: Vec<&str>) -> Vec<Stmt> {
+        let src: String = src_lines.join("\n");
+        let src_chars: Vec<char> = src.chars().collect();
         let tokens = lexer::tokenize(src_chars);
-        let ast = parser::parse(tokens);
+        parser::parse(tokens)
+    }
 
-        let mut mock_io: MockIO = MockIO::new();
-        mock_io.expect_println("১");
-
+    fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) {
         let mut interpreter = Interpreter::new(ast, &mut mock_io);
         interpreter.run();
-
         assert_eq!(mock_io.assert_all_true(), true);
+    }
+
+    #[test]
+    fn println_test() {
+        let ast = src_to_ast(vec![
+            "দেখাও ০;",
+            "দেখাও ০;",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("০");
+        mock_io.expect_println("০");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn print_test() {
+        let ast = src_to_ast(vec![
+            "_দেখাও ০;",
+            "_দেখাও ০;",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_print("০");
+        mock_io.expect_print("০");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn var_decl_num() {
+        let ast = src_to_ast(vec![
+            "নাম ক = ১;",
+            "দেখাও ক;",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("১");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn var_decl_string() {
+        let ast = src_to_ast(vec![
+            r#"নাম ক  = "testing";"#,
+            "দেখাও ক;"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("testing");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn var_decl_array() {
+        let ast = src_to_ast(vec![
+            "নাম ক = [১, ২, ৩];",
+            "দেখাও ক[১];"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("২");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn expression_unary() {
+        let ast = src_to_ast(vec![
+            "নাম ক = ১;",
+            "নাম খ = -১;",
+            "দেখাও -ক;",
+            "দেখাও -খ;",
+            "দেখাও !সত্য;",
+            "দেখাও !মিথ্যা;",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("-১");
+        mock_io.expect_println("১");
+        mock_io.expect_println("মিথ্যা");
+        mock_io.expect_println("সত্য");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn expression_and() {
+        let ast = src_to_ast(vec![
+            "দেখাও মিথ্যা & মিথ্যা;",
+            "দেখাও মিথ্যা & সত্য;",
+            "দেখাও সত্য & মিথ্যা ;",
+            "দেখাও সত্য & সত্য;",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("মিথ্যা");
+        mock_io.expect_println("মিথ্যা");
+        mock_io.expect_println("মিথ্যা");
+        mock_io.expect_println("সত্য");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn expression_or() {
+        let ast = src_to_ast(vec![
+            "দেখাও মিথ্যা | মিথ্যা;",
+            "দেখাও মিথ্যা | সত্য;",
+            "দেখাও সত্য | মিথ্যা ;",
+            "দেখাও সত্য | সত্য;",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("মিথ্যা");
+        mock_io.expect_println("সত্য");
+        mock_io.expect_println("সত্য");
+        mock_io.expect_println("সত্য");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn expression_equlaity() {
+        let ast = src_to_ast(vec![
+            "দেখাও মিথ্যা == মিথ্যা;",
+            "দেখাও মিথ্যা != সত্য;",
+            "দেখাও সত্য == মিথ্যা ;",
+            "দেখাও সত্য != সত্য;",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("সত্য");
+        mock_io.expect_println("সত্য");
+        mock_io.expect_println("মিথ্যা");
+        mock_io.expect_println("মিথ্যা");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn if_test_condition_true() {
+        let ast = src_to_ast(vec![
+            "যদি সত্য {",
+            "   দেখাও ০;",
+            "}",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("০");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn if_test_condition_false() {
+        let ast = src_to_ast(vec![
+            "যদি মিথ্যা {",
+            "   দেখাও ১;",
+            "} অথবা {",
+            "   দেখাও ০;",
+            "}",
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("০");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn loop_test() {
+        let ast = src_to_ast(vec![
+            "নাম ক = ০;",
+            "লুপ {",
+            "   দেখাও ১;",
+            "   ক = ক + ১;",
+            "   যদি ক >= ৩ {",
+            "       থামাও;",
+            "   }",
+            "} আবার;"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("১");
+        mock_io.expect_println("১");
+        mock_io.expect_println("১");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn function_decl_call() {
+        let ast = src_to_ast(vec![
+            "ফাং দ্বিগুন(সংখ্যা) {",
+            "   ফেরত সংখ্যা * ২;",
+            "} ফেরত;",
+            "দেখাও দ্বিগুন(২);"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("৪");
+        run_assert_all_true(ast, mock_io);
     }
 }
