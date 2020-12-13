@@ -586,7 +586,7 @@ mod tests {
     use crate::frontend::parser::*;
 
     #[test]
-    fn parse_test_1() {
+    fn parse_test_primary_num() {
         let tokens = lexer::tokenize("দেখাও ৫৩.৬;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Primary(Primary::Num(53.6)));
@@ -594,7 +594,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_2() {
+    fn parse_test_binary_addition() {
         let tokens = lexer::tokenize("দেখাও -৫৩.৬ + ৬;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
@@ -606,7 +606,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_3() {
+    fn parse_test_primary_string() {
         let tokens = lexer::tokenize("দেখাও \"this is a test\";".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Primary(Primary::String(String::from("this is a test"))));
@@ -614,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_4() {
+    fn parse_test_print_expr() {
         let tokens = lexer::tokenize("দেখাও ১ + ৩ * ২;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
@@ -630,7 +630,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_5() {
+    fn parse_test_print_equality() {
         let tokens = lexer::tokenize("দেখাও ১ == ১;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Equality(Binary {
@@ -643,7 +643,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_6() {
+    fn parse_test_print_not_equal() {
         let tokens = lexer::tokenize("দেখাও ১ != ১;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Equality(Binary {
@@ -656,7 +656,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_7() {
+    fn parse_test_print_comparison_less() {
         let tokens = lexer::tokenize("দেখাও ১ < ১;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
@@ -669,7 +669,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_8() {
+    fn parse_test_comaprison_greater() {
         let tokens = lexer::tokenize("দেখাও ১ > ১;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
@@ -682,7 +682,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_9() {
+    fn parse_test_comparison_less_or_equla() {
         let tokens = lexer::tokenize("দেখাও ১ <= ১;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
@@ -695,7 +695,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_10() {
+    fn parse_test_comaprison_greater_or_equla() {
         let tokens = lexer::tokenize("দেখাও ১ >= ১;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
@@ -708,7 +708,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_11() {
+    fn parse_test_print_logical_and() {
         let tokens = lexer::tokenize("দেখাও সত্য & মিথ্যা;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::And(And {
@@ -720,7 +720,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_12() {
+    fn parse_test_print_logical_or() {
         let tokens = lexer::tokenize("দেখাও সত্য | মিথ্যা;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Or(Or {
@@ -732,7 +732,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_13() {
+    fn parse_test_print_logical_not() {
         let tokens = lexer::tokenize("দেখাও !সত্য;".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Print(Expr::Unary(Unary {
@@ -744,7 +744,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_assignment_1() {
+    fn parse_test_assignment_string() {
         let tokens = lexer::tokenize("নাম ল = \"red\";".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Assignment(Assignment {
@@ -762,7 +762,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_test_re_assignment_1() {
+    fn parse_test_re_assignment_string() {
         let tokens = lexer::tokenize("ল = \"red\";".chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Assignment(Assignment {

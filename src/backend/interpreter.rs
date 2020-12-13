@@ -914,6 +914,70 @@ mod tests {
     }
 
     #[test]
+    fn array_mutate_push() {
+        let ast = src_to_ast(vec![
+            "নাম ক = [১, ২, ৩];",
+            "_লিস্ট-পুশ(ক, ৪);",
+            "দেখাও ক[৩];"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("৪");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn array_push_middle() {
+        let ast = src_to_ast(vec![
+            "নাম ক = [১, ২, ৩];",
+            "_লিস্ট-পুশ(ক, ১, ৪);",
+            "দেখাও ক[১];"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("৪");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn array_pop_middle() {
+        let ast = src_to_ast(vec![
+            "নাম ক = [১, ২, ৩];",
+            "_লিস্ট-পপ(ক, ১);",
+            "দেখাও ক[১];"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("৩");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn array_mutate() {
+        let ast = src_to_ast(vec![
+            "নাম ক = [১, ২, ৩];",
+            "ক[২] = ৫;",
+            "দেখাও ক[২];"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("৫");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn array_consistent() {
+        let ast = src_to_ast(vec![
+            "নাম ক = [১, ২, ৩];",
+            "নাম খ = ক;",
+            "ক[১] = ২০;",
+            "দেখাও খ[১];",
+            "খ[১] = ৩০;",
+            "দেখাও ক[১];"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("২০");
+        mock_io.expect_println("৩০");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
     fn expression_unary() {
         let ast = src_to_ast(vec![
             "নাম ক = ১;",
