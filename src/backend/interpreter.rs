@@ -484,11 +484,11 @@ impl<T: IO> Interpreter<'_, T> {
             parser::Expr::AddOrSub(addsub_expr) => self.interpret_addsub_expr(addsub_expr),
             parser::Expr::MulOrDivOrRemainder(muldiv_expr) => self.interpret_muldiv_remainder_expr(muldiv_expr),
             parser::Expr::Call(function) => self.interpret_func_call_expr(function),
-            parser::Expr::ArrayIndexing(identifier, i) => self.interpret_arr_indexing(identifier, i),
+            parser::Expr::Indexing(identifier, i) => self.interpret_indexing(identifier, i),
         }
     }
 
-    fn interpret_arr_indexing(&mut self, indentifier: Box<parser::Expr>, index: Box<parser::Expr>) -> DataType {
+    fn interpret_indexing(&mut self, indentifier: Box<parser::Expr>, index: Box<parser::Expr>) -> DataType {
         let identifier = self.interpret_expr(*indentifier);
         let index = self.interpret_expr(*index);
 
@@ -497,8 +497,14 @@ impl<T: IO> Interpreter<'_, T> {
                 let arr = self.lists[arr_i].clone();
                 return arr[i as usize].clone()
             },
-            (_, DataType::Num(_)) => panic!("Indexing only possible with array"),
-            (DataType::List(_), _) => panic!("Array index must evaluate to number type"),
+            (DataType::NamelessRecord(record_i), DataType::String(key)) => {
+                let nameless_record = self.nameless_records[record_i].clone();
+                return nameless_record.get(&*key).unwrap().clone();
+            },
+            (_, DataType::Num(_)) => panic!("List only supports indexing with number"),
+            (DataType::List(_), _) => panic!("List index must evaluate to number type"),
+            (_, DataType::String(_)) => panic!("Record ony supports indexing with string"),
+            (DataType::NamelessRecord(_), _) => panic!("Record index must evaluate to string type"),
             _ => panic!("Invalid indexing format"),
         }
     }

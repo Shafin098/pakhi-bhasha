@@ -37,7 +37,7 @@ pub enum AssignmentKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
-    ArrayIndexing(Box<Expr>, Box<Expr>),
+    Indexing(Box<Expr>, Box<Expr>),
     Or(Or),
     And(And),
     Equality(Binary),
@@ -529,6 +529,8 @@ impl Parser {
                 // consuming identifier token
                 self.current += 1;
 
+                // this loop works for multi-dimensional or single-dimensional indexing happening, for example
+                // arr[1][2] or arr[1]
                 while self.tokens[self.current].kind == TokenKind::SquareBraceStart {
                     // consuming [ token
                     self.current += 1;
@@ -539,7 +541,7 @@ impl Parser {
                     // consuming ] token
                     self.current += 1;
 
-                    expr = Expr::ArrayIndexing(Box::new(expr), Box::new(i));
+                    expr = Expr::Indexing(Box::new(expr), Box::new(i));
                 }
 
                 return expr;
