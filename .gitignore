@@ -1,6 +1,5 @@
 .idea
 .vscode
 target
-ptest.pakhi
-test.pakhi
+test_program
 release_template
