@@ -22,7 +22,9 @@ pub enum TokenKind {
     Multiply,
     Division,
     Remainder,
+    At,
     Semicolon,
+    Colon,
     Comma,
     ParenStart,
     ParenEnd,
@@ -175,6 +177,24 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     lexeme: src[start..(start+1)].to_vec(),
                     line,
                 }
+            }
+        },
+        '@' => {
+            consumed_char = 1;
+            consumed_line = 0;
+            token = Token {
+                kind: TokenKind::At,
+                lexeme: src[start..(start+1)].to_vec(),
+                line,
+            }
+        },
+        ':' => {
+            consumed_char = 1;
+            consumed_line = 0;
+            token = Token {
+                kind: TokenKind::Colon,
+                lexeme: src[start..(start+1)].to_vec(),
+                line,
             }
         },
         ';' => {
@@ -571,5 +591,18 @@ mod tests {
         assert_eq!(TokenKind::Equal, tokens[2].kind);
         assert_eq!(TokenKind::Num(0.0), tokens[3].kind);
         assert_eq!(TokenKind::Semicolon, tokens[4].kind);
+    }
+
+    #[test]
+    fn tokenize_nameless_record_literal() {
+        let tokens = tokenize(
+            r#"@ {"key": ১,}"#.chars().collect::<Vec<char>>());
+        assert_eq!(TokenKind::At, tokens[0].kind);
+        assert_eq!(TokenKind::CurlyBraceStart, tokens[1].kind);
+        assert_eq!(TokenKind::String(String::from("key")), tokens[2].kind);
+        assert_eq!(TokenKind::Colon, tokens[3].kind);
+        assert_eq!(TokenKind::Num(1.0), tokens[4].kind);
+        assert_eq!(TokenKind::Comma, tokens[5].kind);
+        assert_eq!(TokenKind::CurlyBraceEnd, tokens[6].kind);
     }
 }

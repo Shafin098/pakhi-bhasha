@@ -56,6 +56,7 @@ pub enum Primary {
     Num(f64),
     String(String),
     Array(Vec<Expr>),
+    NamelessRecord((Vec<Expr>, Vec<Expr>)),
     Var(Token),
     Group(Box<Expr>),
 }
@@ -158,6 +159,7 @@ impl Parser {
             TokenKind::Break => self.break_stmt(),
             TokenKind::Function => self.func_def_stmt(),
             TokenKind::Return => self.return_stmt(),
+            TokenKind::At => todo!(),
              _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
@@ -522,6 +524,7 @@ impl Parser {
             },
             TokenKind::Identifier => {
                 // this is identifier or array index expression
+
                 let mut expr = Expr::Primary(Primary::Var(self.tokens[self.current].clone()));
                 // consuming identifier token
                 self.current += 1;
@@ -563,18 +566,65 @@ impl Parser {
                     }
                 }
 
+                if self.tokens[self.current].kind != TokenKind::SquareBraceEnd {
+                    panic!("Expecting ] at line: {}", self.tokens[self.current].line);
+                }
                 //consuming ] Token
                 self.current += 1;
 
                 return Expr::Primary(Primary::Array(array_literal));
-            }
+            },
+            TokenKind::At => {
+                // Iterates through all key-value pair and saves them in different vec. Then returns
+                // vec of key-value pair as tuples
+
+                // consuming @ token
+                self.current += 1;
+
+                if self.tokens[self.current].kind != TokenKind::CurlyBraceStart {
+                    panic!("Expected {{ after @ at line: {}", self.tokens[self.current].line);
+                }
+                // consuming { token
+                self.current += 1;
+
+                let mut keys: Vec<Expr>  = Vec::new();
+                let mut values: Vec<Expr>  = Vec::new();
+
+                while self.tokens[self.current].kind != TokenKind::CurlyBraceEnd {
+                    // pushing key of a key-value pair
+                    keys.push(self.expression());
+
+                    // Token after key should be colon
+                    if self.tokens[self.current].kind != TokenKind::Colon {
+                        panic!("Expected : after key name at line: {}", self.tokens[self.current].line);
+                    }
+                    // consuming : token
+                    self.current += 1;
+
+                    // pushing value of a key-value pair
+                    values.push(self.expression());
+
+                    if self.tokens[self.current].kind == TokenKind::Comma {
+                        // consuming , token
+                        self.current += 1
+                    }
+                }
+
+                if self.tokens[self.current].kind != TokenKind::CurlyBraceEnd {
+                    panic!("Expecting }} at line: {}", self.tokens[self.current].line);
+                }
+                //consuming } Token
+                self.current += 1;
+
+                return Expr::Primary(Primary::NamelessRecord((keys, values)));
+            },
             _ => panic!("Error at line: {}\n Debug Token: {:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
     }
 }
 
-// --------------------------------------------
+// --------------Entry-pint--------------------
 pub fn parse(tokens: Vec<Token>) -> Vec<Stmt> {
     let mut parser = Parser::new(tokens);
     parser.parse()
@@ -582,8 +632,12 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Stmt> {
 
 #[cfg(test)]
 mod tests {
-    use crate::frontend::lexer;
+    use crate::frontend::{lexer, parser};
     use crate::frontend::parser::*;
+    use crate::parser::AssignmentKind::FirstAssignment;
+    use crate::parser::Primary::{NamelessRecord, Num};
+    use crate::lexer::TokenKind::{Identifier, Plus};
+    use crate::parser::Expr::AddOrSub;
 
     #[test]
     fn parse_test_primary_num() {
@@ -775,6 +829,53 @@ mod tests {
             indexes: Vec::new(),
             init_value: Some(Expr::Primary(Primary::String("red".to_string()))),
         });
+
+        assert_eq!(expected_ast, ast[0]);
+    }
+
+    #[test]
+    fn parse_test_namesless_record_literal() {
+        let tokens = lexer::tokenize(r#"নাম ক =  @{
+                                                                "key": ১,
+                                                                "key_2": "string",
+                                                                "key": ১ + ১,
+                                                            };"#.chars().collect());
+        let ast = parse(tokens);
+        let expected_ast = Stmt::Assignment(
+            Assignment {
+                kind: FirstAssignment,
+                var_name: Token {
+                    kind: Identifier,
+                    lexeme: vec!['ক'],
+                    line: 1,
+                },
+                indexes: vec![],
+                init_value: Some(
+                    parser::Expr::Primary(
+                        NamelessRecord(
+                            (
+                                vec![
+                                    parser::Expr::Primary(Primary::String("key".to_string())),
+                                    parser::Expr::Primary(Primary::String("key_2".to_string())),
+                                    parser::Expr::Primary(Primary::String("key".to_string())),
+                                ],
+                                vec![
+                                    parser::Expr::Primary(Num(1.0)),
+                                    parser::Expr::Primary(Primary::String("string".to_string())),
+                                    AddOrSub(
+                                        Binary {
+                                            operator: Plus,
+                                            left: Box::from(parser::Expr::Primary(Primary::Num(1.0))),
+                                            right: Box::from(parser::Expr::Primary(Primary::Num(1.0))),
+                                        },
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+            },
+        );
 
         assert_eq!(expected_ast, ast[0]);
     }

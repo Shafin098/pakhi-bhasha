@@ -15,16 +15,17 @@ fn main() {
                     // println!("{}", src_string);
                     let src_chars: Vec<char> = src_string.chars().collect();
                     let tokens = lexer::tokenize(src_chars);
+                    //println!("{:#?}", tokens);
                     //for t in &tokens {
                     //    println!("{:#?}", t);
                     //}
                     let ast_tree = parser::parse(tokens);
-                    //println!("Ast : {:#?}", ast_tree);
+                    println!("Ast : {:#?}", ast_tree);
 
                     // println!();
                     // println!("Interpreter");
                     // println!("____________");
-                    interpreter::run(ast_tree);
+                    //interpreter::run(ast_tree);
                 },
                 Err(e) => eprintln!("{}", e),
             }

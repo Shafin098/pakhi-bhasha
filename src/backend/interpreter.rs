@@ -641,6 +641,7 @@ impl<T: IO> Interpreter<'_, T> {
                 return DataType::Array(self.arrays.len() - 1);
             },
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
+            parser::Primary::NamelessRecord(kes_values) => {panic!()}
         }
     }
 
