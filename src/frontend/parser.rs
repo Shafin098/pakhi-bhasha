@@ -523,7 +523,7 @@ impl Parser {
                 return Expr::Primary(Primary::String(s));
             },
             TokenKind::Identifier => {
-                // this is identifier or array index expression
+                // this is identifier or indexing expression
 
                 let mut expr = Expr::Primary(Primary::Var(self.tokens[self.current].clone()));
                 // consuming identifier token

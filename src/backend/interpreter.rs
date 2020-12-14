@@ -160,7 +160,17 @@ impl<T: IO> Interpreter<'_, T> {
                     }
                 }
                 self.io.print("]");
-            }
+            },
+            DataType::NamelessRecord(record_i) => {
+                let nameless_record = self.nameless_records.get(record_i).unwrap().clone();
+                self.io.print("@{");
+                for (k, v) in nameless_record {
+                    self.io.print(&*format!("\"{}\":", k));
+                    self.print_datatype(v.clone());
+                    self.io.print(",")
+                }
+                self.io.print("}");
+            },
             _ => panic!("Datatype isn't implemented"),
         }
         self.current += 1;
@@ -184,7 +194,17 @@ impl<T: IO> Interpreter<'_, T> {
                     }
                 }
                 self.io.print("]");
-            }
+            },
+            DataType::NamelessRecord(record_i) => {
+                let nameless_record = self.nameless_records.get(record_i).unwrap().clone();
+                self.io.print("@{");
+                for (k, v) in nameless_record {
+                    self.io.print(&*format!("\"{}\":", k));
+                    self.print_datatype(v.clone());
+                    self.io.print(",")
+                }
+                self.io.print("}");
+            },
             _ => panic!("Datatype isn't implemented"),
         }
     }
@@ -879,7 +899,7 @@ mod tests {
     fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) {
         let mut interpreter = Interpreter::new(ast, &mut mock_io);
         interpreter.run();
-        assert_eq!(mock_io.assert_all_true(), true);
+        assert!(mock_io.assert_all_true());
     }
 
     #[test]
@@ -929,7 +949,7 @@ mod tests {
     }
 
     #[test]
-    fn var_decl_array() {
+    fn var_decl_list() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
             "দেখাও ক[১];"
@@ -940,7 +960,7 @@ mod tests {
     }
 
     #[test]
-    fn array_mutate_push() {
+    fn list_mutate_push() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
             "_লিস্ট-পুশ(ক, ৪);",
@@ -952,7 +972,7 @@ mod tests {
     }
 
     #[test]
-    fn array_push_middle() {
+    fn list_push_middle() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
             "_লিস্ট-পুশ(ক, ১, ৪);",
@@ -964,7 +984,7 @@ mod tests {
     }
 
     #[test]
-    fn array_pop_middle() {
+    fn list_pop_middle() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
             "_লিস্ট-পপ(ক, ১);",
@@ -976,7 +996,7 @@ mod tests {
     }
 
     #[test]
-    fn array_mutate() {
+    fn list_mutate() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
             "ক[২] = ৫;",
@@ -988,7 +1008,7 @@ mod tests {
     }
 
     #[test]
-    fn array_consistent() {
+    fn list_consistent() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
             "নাম খ = ক;",
@@ -1000,6 +1020,24 @@ mod tests {
         let mut mock_io: MockIO = MockIO::new();
         mock_io.expect_println("২০");
         mock_io.expect_println("৩০");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn nameless_record_literal() {
+        let ast = src_to_ast(vec![
+            "নাম ক =  @{",
+                        "\"key\": ১,",
+                        "\"key\": ১ + ১,",
+                      "};",
+           "দেখাও ক;",
+       ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_print("@{");
+        mock_io.expect_print("\"key\":");
+        mock_io.expect_print("২");
+        mock_io.expect_print(",");
+        mock_io.expect_println("}");
         run_assert_all_true(ast, mock_io);
     }
 
