@@ -11,7 +11,8 @@ enum DataType {
     String(String),
     // Array variant of DataType enum only stores the index of the actual array from arrays
     // field in Interpreter, so multiple array reference implementation is easy.
-    Array(usize),
+    List(usize),
+    NamelessRecord(usize),
     Function(Func),
     Nil,
 }
@@ -36,7 +37,8 @@ struct Interpreter<'a, T: IO> {
     return_addrs: Vec<usize>,
     envs: Vec<HashMap<String, Option<DataType>>>,
     previous_if_was_executed: Vec<bool>,
-    arrays: Vec<Vec<DataType>>,
+    lists: Vec<Vec<DataType>>,
+    nameless_records: Vec<HashMap<String, DataType>>,
     io: &'a mut T,
 }
 
@@ -49,7 +51,8 @@ impl<T: IO> Interpreter<'_, T> {
             return_addrs: Vec::new(),
             envs: vec![HashMap::new()],
             previous_if_was_executed: Vec::new(),
-            arrays: Vec::new(),
+            lists: Vec::new(),
+            nameless_records: Vec::new(),
             io: io,
         }
     }
@@ -144,15 +147,15 @@ impl<T: IO> Interpreter<'_, T> {
             DataType::Num(n) => self.io.print( self.to_bn_num(n).as_str()),
             DataType::Bool(b) => self.io.print( self.to_bn_bool(b).as_str()),
             DataType::String(s) => self.io.print(format!("\"{}\"", s).as_str()),
-            DataType::Array(arr_i) => {
+            DataType::List(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
-                for (i, elem) in self.arrays[arr_i].iter().enumerate() {
+                for (i, elem) in self.lists[arr_i].iter().enumerate() {
                     elems.push((i, elem.clone()));
                 }
                 self.io.print("[");
                 for (i, elem) in elems {
                     self.print_datatype(elem.clone());
-                    if (i+1) < self.arrays[arr_i].len() {
+                    if (i+1) < self.lists[arr_i].len() {
                         self.io.print(", ")
                     }
                 }
@@ -168,15 +171,15 @@ impl<T: IO> Interpreter<'_, T> {
             DataType::Num(n) => self.io.print( self.to_bn_num(n).as_str()),
             DataType::Bool(b) => self.io.print( self.to_bn_bool(b).as_str()),
             DataType::String(s) => self.io.print(s.as_str()),
-            DataType::Array(arr_i) => {
+            DataType::List(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
-                for (i, elem) in self.arrays[arr_i].iter().enumerate() {
+                for (i, elem) in self.lists[arr_i].iter().enumerate() {
                     elems.push((i.clone(), elem.clone()));
                 }
                 self.io.print("[");
                 for (i, elem) in elems.clone() {
                     self.print_datatype(elem.clone());
-                    if (i+1) < self.arrays[arr_i].len() {
+                    if (i+1) < self.lists[arr_i].len() {
                         self.io.print(", ")
                     }
                 }
@@ -191,20 +194,30 @@ impl<T: IO> Interpreter<'_, T> {
             DataType::Num(n) => self.io.println(self.to_bn_num(n).as_str()),
             DataType::Bool(b) => self.io.println(self.to_bn_bool(b).as_str()),
             DataType::String(s) => self.io.println( s.as_str()),
-            DataType::Array(arr_i) => {
+            DataType::List(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
-                for (i, elem) in self.arrays[arr_i].iter().enumerate() {
+                for (i, elem) in self.lists[arr_i].iter().enumerate() {
                     elems.push((i, elem.clone()));
                 }
-                print!("[");
+                self.io.print("[");
                 for (i, elem) in elems.clone() {
                     self.print_datatype(elem.clone());
-                    if (i+1) < self.arrays[arr_i].len() {
-                        print!(", ")
+                    if (i+1) < self.lists[arr_i].len() {
+                        self.io.print(", ")
                     }
                 }
                 self.io.println("]");
-            }
+            },
+            DataType::NamelessRecord(record_i) => {
+                let nameless_record = self.nameless_records.get(record_i).unwrap().clone();
+                self.io.print("@{");
+                for (k, v) in nameless_record {
+                    self.io.print(&*format!("\"{}\":", k));
+                    self.print_datatype(v.clone());
+                    self.io.print(",")
+                }
+                self.io.println("}");
+            },
             _ => panic!("Datatype printing isn't implemented"),
         }
         self.current += 1;
@@ -238,8 +251,8 @@ impl<T: IO> Interpreter<'_, T> {
                     for i in 0..assign_stmt.indexes.len() {
                         let index = self.interpret_expr(assign_stmt.indexes[i].clone());
                         match  index {
-                            DataType::Array(arr_i) => {
-                                match self.arrays[arr_i][0] {
+                            DataType::List(arr_i) => {
+                                match self.lists[arr_i][0] {
                                     DataType::Num(i) => evaluated_index_exprs.push(i as usize),
                                     _ => panic!(),
                                 }
@@ -252,13 +265,13 @@ impl<T: IO> Interpreter<'_, T> {
                         .get(var_key.as_str()).unwrap();
 
                     match var {
-                        Some(DataType::Array(i)) => {
-                            let array_copy = self.arrays.clone();
-                            let arr = self.arrays.get_mut(*i).unwrap();
+                        Some(DataType::List(i)) => {
+                            let array_copy = self.lists.clone();
+                            let arr = self.lists.get_mut(*i).unwrap();
 
                             if assign_stmt.indexes.len() == 1 {
                                 match effective_index {
-                                    DataType::Array(j) => {
+                                    DataType::List(j) => {
                                         let a = array_copy[j].clone();
                                         match a[0] {
                                             DataType::Num(n) => arr[n as usize] = init_value,
@@ -276,10 +289,10 @@ impl<T: IO> Interpreter<'_, T> {
                             for i in 1..evaluated_index_exprs.len() {
                                 if i == evaluated_index_exprs.len() - 1 {
                                     match assignee {
-                                        DataType::Array(arr_i) => {
+                                        DataType::List(arr_i) => {
                                             //let a = self.arrays.get_mut(arr_i).unwrap();
                                             let index = evaluated_index_exprs.get(i).unwrap();
-                                            self.arrays[arr_i][index.clone()] = init_value.clone();
+                                            self.lists[arr_i][index.clone()] = init_value.clone();
                                             //a[index.clone()] = init_value.clone();
                                             break;
                                         },
@@ -287,8 +300,8 @@ impl<T: IO> Interpreter<'_, T> {
                                     }
                                 } else {
                                     match assignee {
-                                        DataType::Array(arr_i) => {
-                                            let a = self.arrays.get_mut(arr_i).unwrap();
+                                        DataType::List(arr_i) => {
+                                            let a = self.lists.get_mut(arr_i).unwrap();
                                             let index = evaluated_index_exprs.get(i).unwrap();
                                             assignee = a.get(index.clone()).unwrap().clone();
                                         },
@@ -460,12 +473,12 @@ impl<T: IO> Interpreter<'_, T> {
         let index = self.interpret_expr(*index);
 
         match (identifier, index) {
-            (DataType::Array(arr_i), DataType::Num(i)) => {
-                let arr = self.arrays[arr_i].clone();
+            (DataType::List(arr_i), DataType::Num(i)) => {
+                let arr = self.lists[arr_i].clone();
                 return arr[i as usize].clone()
             },
             (_, DataType::Num(_)) => panic!("Indexing only possible with array"),
-            (DataType::Array(_), _) => panic!("Array index must evaluate to number type"),
+            (DataType::List(_), _) => panic!("Array index must evaluate to number type"),
             _ => panic!("Invalid indexing format"),
         }
     }
@@ -474,9 +487,9 @@ impl<T: IO> Interpreter<'_, T> {
         if f.arguments.len() == 2 {
             let list = self.interpret_expr(f.arguments[0].clone());
 
-            if let DataType::Array(index) = list {
+            if let DataType::List(index) = list {
                 let push_value = self.interpret_expr(f.arguments[1].clone());
-                let actual_list = self.arrays.get_mut(index).unwrap();
+                let actual_list = self.lists.get_mut(index).unwrap();
                 actual_list.push(push_value);
             } else {
                 panic!("Datatype must be array to push value")
@@ -485,10 +498,10 @@ impl<T: IO> Interpreter<'_, T> {
         } else if f.arguments.len() == 3 {
             let list = self.interpret_expr(f.arguments[0].clone());
 
-            if let DataType::Array(index) = list {
+            if let DataType::List(index) = list {
                 let push_at = self.interpret_expr(f.arguments[1].clone());
                 let push_value = self.interpret_expr(f.arguments[2].clone());
-                let actual_list = self.arrays.get_mut(index).unwrap();
+                let actual_list = self.lists.get_mut(index).unwrap();
 
                 if let DataType::Num(push_at_i_f) = push_at {
                     let push_at_u = push_at_i_f as usize;
@@ -506,17 +519,17 @@ impl<T: IO> Interpreter<'_, T> {
         if f.arguments.len() == 1 {
             let list = self.interpret_expr(f.arguments[0].clone());
 
-            if let DataType::Array(index) = list {
-                let actual_list = self.arrays.get_mut(index).unwrap();
+            if let DataType::List(index) = list {
+                let actual_list = self.lists.get_mut(index).unwrap();
                 actual_list.pop();
             } else { panic!("Datatype must be array to push value")}
 
         } else if f.arguments.len() == 2 {
             let list = self.interpret_expr(f.arguments[0].clone());
 
-            if let DataType::Array(index) = list {
+            if let DataType::List(index) = list {
                 let pop_at = self.interpret_expr(f.arguments[1].clone());
-                let actual_list = self.arrays.get_mut(index).unwrap();
+                let actual_list = self.lists.get_mut(index).unwrap();
 
                 if let DataType::Num(pop_at_i_f) = pop_at {
                     let pop_at_i = pop_at_i_f as usize;
@@ -630,18 +643,30 @@ impl<T: IO> Interpreter<'_, T> {
             parser::Primary::Num(n) => DataType::Num(n),
             parser::Primary::Bool(b) => DataType::Bool(b),
             parser::Primary::Var(v) => self.interpret_var(v),
-            parser::Primary::Array(array) => {
+            parser::Primary::List(array) => {
                 // this is a internal pakhi array data type representation
                 let mut pakhi_array: Vec<DataType> = Vec::new();
                 for elem in array {
                     pakhi_array.push(self.interpret_expr(elem));
                 }
 
-                self.arrays.push(pakhi_array);
-                return DataType::Array(self.arrays.len() - 1);
+                self.lists.push(pakhi_array);
+                return DataType::List(self.lists.len() - 1);
             },
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
-            parser::Primary::NamelessRecord(kes_values) => {panic!()}
+            parser::Primary::NamelessRecord(key_values) => {
+                let mut record: HashMap<String, DataType> = HashMap::new();
+
+                for (i, k) in key_values.0.iter().enumerate() {
+                    let key = self.interpret_expr(k.clone());
+                    if let DataType::String(string_key) = key {
+                        record.insert(string_key, self.interpret_expr(key_values.1[i].clone()));
+                    }
+                }
+
+                self.nameless_records.push(record);
+                return  DataType::NamelessRecord(self.nameless_records.len() - 1);
+            }
         }
     }
 
@@ -708,9 +733,9 @@ impl<T: IO> Interpreter<'_, T> {
                 }
                 panic!("Invalid operation on String");
             },
-            (DataType::Array(ref mut left_arr_i), DataType::Array(ref mut right_arr_i)) => {
-                let left_arr = self.arrays.get(*left_arr_i).unwrap().clone();
-                let right_arr = self.arrays.get(*right_arr_i).unwrap().clone();
+            (DataType::List(ref mut left_arr_i), DataType::List(ref mut right_arr_i)) => {
+                let left_arr = self.lists.get(*left_arr_i).unwrap().clone();
+                let right_arr = self.lists.get(*right_arr_i).unwrap().clone();
                 if addsub_expr.operator == TokenKind::Plus {
                     let mut concatted_arr: Vec<DataType> = Vec::new();
                     for elem in left_arr {
@@ -719,8 +744,8 @@ impl<T: IO> Interpreter<'_, T> {
                     for elem in right_arr {
                         concatted_arr.push(elem);
                     }
-                    self.arrays.push(concatted_arr);
-                    return DataType::Array(self.arrays.len() - 1);
+                    self.lists.push(concatted_arr);
+                    return DataType::List(self.lists.len() - 1);
                 }
                 panic!("Invalid operation on Arry")
             }

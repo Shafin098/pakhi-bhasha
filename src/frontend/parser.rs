@@ -55,7 +55,7 @@ pub enum Primary {
     Bool(bool),
     Num(f64),
     String(String),
-    Array(Vec<Expr>),
+    List(Vec<Expr>),
     NamelessRecord((Vec<Expr>, Vec<Expr>)),
     Var(Token),
     Group(Box<Expr>),
@@ -221,7 +221,7 @@ impl Parser {
         let mut indexes: Vec<Expr> = Vec::new();
         while self.tokens[self.current].kind != TokenKind::Equal {
             let index = self.expression();
-            if let Expr::Primary(Primary::Array(_)) = index {
+            if let Expr::Primary(Primary::List(_)) = index {
                 indexes.push(index);
             } else {
                 panic!("Error at line {}. Array index expected", self.tokens[self.current].line);
@@ -572,7 +572,7 @@ impl Parser {
                 //consuming ] Token
                 self.current += 1;
 
-                return Expr::Primary(Primary::Array(array_literal));
+                return Expr::Primary(Primary::List(array_literal));
             },
             TokenKind::At => {
                 // Iterates through all key-value pair and saves them in different vec. Then returns
