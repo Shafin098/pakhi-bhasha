@@ -246,64 +246,90 @@ impl<T: IO> Interpreter<'_, T> {
     fn interpret_assign_stmt(&mut self, assign_stmt: parser::Assignment) {
         let var_key: String = assign_stmt.var_name.lexeme.clone().into_iter().collect();
 
+        match assign_stmt.kind {
+            parser::AssignmentKind::FirstAssignment => self.create_new_var(var_key, assign_stmt),
+            parser::AssignmentKind::Reassignment => self.reassign_to_old_var(var_key, assign_stmt),
+        }
+
+        self.current += 1;
+    }
+
+    fn create_new_var(&mut self, var_key: String, assign_stmt: parser::Assignment) {
+        match assign_stmt.init_value {
+            Some(expr) => {
+                let init_value = self.interpret_expr(expr);
+
+                let env_i = self.envs.len() - 1;
+                let current_env = &mut self.envs[env_i];
+                current_env.insert(var_key, Some(init_value));
+            },
+            _ => {
+                let env_i = self.envs.len() - 1;
+                let current_env = &mut self.envs[env_i];
+                current_env.insert(var_key, None);
+            },
+        }
+    }
+
+    fn reassign_to_old_var(&mut self, var_key: String, assign_stmt: parser::Assignment) {
         let mut var_found_at_env_index: i32 = (self.envs.len() - 1) as i32;
-        if assign_stmt.kind == parser::AssignmentKind::Reassignment {
-            for env in self.envs.iter().rev() {
-                if env.contains_key(&var_key) && assign_stmt.init_value.is_some() {
-                    break;
-                } else {
-                    var_found_at_env_index -= 1;
-                }
+
+        for env in self.envs.iter().rev() {
+            if env.contains_key(&var_key) && assign_stmt.init_value.is_some() {
+                break;
+            } else {
+                var_found_at_env_index -= 1;
             }
-            let init_expr = assign_stmt.init_value.clone().unwrap();
-            let init_value = self.interpret_expr(init_expr);
+        }
+        let init_expr = assign_stmt.init_value.clone().unwrap();
+        let init_value = self.interpret_expr(init_expr);
 
-            if var_found_at_env_index >= 0 {
-                if assign_stmt.indexes.is_empty() {
-                    // only simple variable assignment
-                    self.envs[var_found_at_env_index as usize].insert(var_key.clone(), Some(init_value));
-                } else {
-                    // assignment to element in a array
+        if var_found_at_env_index >= 0 {
+            if assign_stmt.indexes.is_empty() {
+                // only simple variable assignment
+                self.envs[var_found_at_env_index as usize].insert(var_key.clone(), Some(init_value));
+            } else {
+                // assignment to element in a array
 
-                    // effective_index is index of deepest nested array, to which init_val will be assigned
-                    let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
-                    let mut evaluated_index_exprs: Vec<usize> = Vec::new();
-                    for i in 0..assign_stmt.indexes.len() {
-                        let index = self.interpret_expr(assign_stmt.indexes[i].clone());
-                        match  index {
-                            DataType::List(arr_i) => {
-                                match self.lists[arr_i][0] {
-                                    DataType::Num(i) => evaluated_index_exprs.push(i as usize),
-                                    _ => panic!(),
-                                }
+                // effective_index is index of deepest nested array, to which init_val will be assigned
+                let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
+                let mut evaluated_index_exprs: Vec<usize> = Vec::new();
+                for i in 0..assign_stmt.indexes.len() {
+                    let index = self.interpret_expr(assign_stmt.indexes[i].clone());
+                    match  index {
+                        DataType::List(arr_i) => {
+                            match self.lists[arr_i][0] {
+                                DataType::Num(i) => evaluated_index_exprs.push(i as usize),
+                                _ => panic!(),
                             }
-                            _ => panic!(),
                         }
+                        _ => panic!(),
                     }
+                }
 
-                    let var = self.envs[var_found_at_env_index as usize]
-                        .get(var_key.as_str()).unwrap();
+                let var = self.envs[var_found_at_env_index as usize]
+                    .get(var_key.as_str()).unwrap();
 
-                    match var {
-                        Some(DataType::List(i)) => {
-                            let array_copy = self.lists.clone();
-                            let arr = self.lists.get_mut(*i).unwrap();
+                match var {
+                    Some(DataType::List(i)) => {
+                        let array_copy = self.lists.clone();
+                        let arr = self.lists.get_mut(*i).unwrap();
 
-                            if assign_stmt.indexes.len() == 1 {
-                                match effective_index {
-                                    DataType::List(j) => {
-                                        let a = array_copy[j].clone();
-                                        match a[0] {
-                                            DataType::Num(n) => arr[n as usize] = init_value,
-                                            _ => panic!(),
-                                        }
-                                    },
-                                    _ => panic!(),
-                                }
-                                self.current += 1;
-                                return;
+                        if assign_stmt.indexes.len() == 1 {
+                            // single dimensional list
+                            // changing list element at only one level deep
+                            match effective_index {
+                                DataType::List(j) => {
+                                    let a = array_copy[j].clone();
+                                    match a[0] {
+                                        DataType::Num(n) => arr[n as usize] = init_value,
+                                        _ => panic!(),
+                                    }
+                                },
+                                _ => panic!(),
                             }
-
+                        } else {
+                            // multidimensional array so need to traverse nested list ore record
                             let mut assignee: DataType = arr.get(evaluated_index_exprs.get(0).unwrap().clone()).unwrap().clone();
 
                             for i in 1..evaluated_index_exprs.len() {
@@ -329,33 +355,14 @@ impl<T: IO> Interpreter<'_, T> {
                                     }
                                 }
                             }
-                        },
-                        _ => panic!("Variable wasn't initialized {:#}", var_key),
-                    }
+                        }
+                    },
+                    _ => panic!("Variable wasn't initialized {:#}", var_key),
                 }
-            } else {
-                panic!("Variable wasn't initialized {:#}", var_key);
             }
+        } else {
+            panic!("Variable wasn't initialized {:#}", var_key);
         }
-
-        if assign_stmt.kind == parser::AssignmentKind::FirstAssignment {
-            match assign_stmt.init_value {
-                Some(expr) => {
-                    let init_value = self.interpret_expr(expr);
-
-                    let env_i = self.envs.len() - 1;
-                    let current_env = &mut self.envs[env_i];
-                    current_env.insert(var_key, Some(init_value));
-                },
-                _ => {
-                    let env_i = self.envs.len() - 1;
-                    let current_env = &mut self.envs[env_i];
-                    current_env.insert(var_key, None);
-                },
-            }
-        }
-
-        self.current += 1;
     }
 
     fn interpret_funcdef(&mut self) {
@@ -1005,8 +1012,8 @@ mod tests {
     fn list_mutate() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
-            "ক[২] = ৫;",
-            "দেখাও ক[২];"
+            "ক[১] = ৫;",
+            "দেখাও ক[১];"
         ]);
         let mut mock_io: MockIO = MockIO::new();
         mock_io.expect_println("৫");
