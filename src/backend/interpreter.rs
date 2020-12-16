@@ -272,97 +272,111 @@ impl<T: IO> Interpreter<'_, T> {
     }
 
     fn reassign_to_old_var(&mut self, var_key: String, assign_stmt: parser::Assignment) {
+        let init_expr = assign_stmt.init_value.clone().unwrap();
+        let init_value = self.interpret_expr(init_expr);
+
+        // if variable wasn't found it evaluates to any negative number
+        let mut var_found_at_env_index: i32 = self.find_var_in_env(var_key.clone(), assign_stmt.init_value.clone());
+
+        if var_found_at_env_index >= 0 {
+            if assign_stmt.indexes.is_empty() {
+                // only simple variable assignment
+                self.envs[var_found_at_env_index as usize].insert(var_key, Some(init_value));
+            } else {
+                // assignment to element in a list or record
+                self.reassign_to_list_or_index(assign_stmt, var_key, var_found_at_env_index, init_value);
+            }
+        } else {
+            panic!("Variable wasn't initialized {:#}", var_key);
+        }
+    }
+
+    // reassign a value to a list or record at provided index
+    fn reassign_to_list_or_index(&mut self, assign_stmt: parser::Assignment, var_key: String, var_found_at_env_index: i32, init_value: DataType) {
+        // effective_index is index of deepest nested array, to which init_val will be assigned
+        let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
+        let mut evaluated_index_exprs: Vec<usize> = Vec::new();
+        for i in 0..assign_stmt.indexes.len() {
+            let index = self.interpret_expr(assign_stmt.indexes[i].clone());
+            match  index {
+                DataType::List(arr_i) => {
+                    match self.lists[arr_i][0] {
+                        DataType::Num(i) => evaluated_index_exprs.push(i as usize),
+                        _ => panic!(),
+                    }
+                }
+                _ => panic!(),
+            }
+        }
+
+        let var = self.envs[var_found_at_env_index as usize]
+            .get(var_key.as_str()).unwrap();
+
+        match var {
+            Some(DataType::List(i)) => {
+                let array_copy = self.lists.clone();
+                let arr = self.lists.get_mut(*i).unwrap();
+
+                if assign_stmt.indexes.len() == 1 {
+                    // single dimensional list
+                    // changing list element at only one level deep
+                    match effective_index {
+                        DataType::List(j) => {
+                            let a = array_copy[j].clone();
+                            match a[0] {
+                                DataType::Num(n) => arr[n as usize] = init_value,
+                                _ => panic!(),
+                            }
+                        },
+                        _ => panic!(),
+                    }
+                } else {
+                    // multidimensional array so need to traverse nested list ore record
+                    let mut assignee: DataType = arr.get(evaluated_index_exprs.get(0).unwrap().clone()).unwrap().clone();
+
+                    for i in 1..evaluated_index_exprs.len() {
+                        if i == evaluated_index_exprs.len() - 1 {
+                            match assignee {
+                                DataType::List(arr_i) => {
+                                    //let a = self.arrays.get_mut(arr_i).unwrap();
+                                    let index = evaluated_index_exprs.get(i).unwrap();
+                                    self.lists[arr_i][index.clone()] = init_value.clone();
+                                    //a[index.clone()] = init_value.clone();
+                                    break;
+                                },
+                                _ => panic!("Cannot assign at index if data type is not array"),
+                            }
+                        } else {
+                            match assignee {
+                                DataType::List(arr_i) => {
+                                    let a = self.lists.get_mut(arr_i).unwrap();
+                                    let index = evaluated_index_exprs.get(i).unwrap();
+                                    assignee = a.get(index.clone()).unwrap().clone();
+                                },
+                                _ => panic!("Cannot index if not array"),
+                            }
+                        }
+                    }
+                }
+            },
+            _ => panic!("Variable wasn't initialized {:#}", var_key),
+        }
+    }
+
+    fn find_var_in_env(&mut self, var_key: String, init_value: Option<parser::Expr>) -> i32 {
+        // if var was found at env returns its scope index
+        // if not found return any integer
         let mut var_found_at_env_index: i32 = (self.envs.len() - 1) as i32;
 
         for env in self.envs.iter().rev() {
-            if env.contains_key(&var_key) && assign_stmt.init_value.is_some() {
+            if env.contains_key(&var_key) && init_value.is_some() {
                 break;
             } else {
                 var_found_at_env_index -= 1;
             }
         }
-        let init_expr = assign_stmt.init_value.clone().unwrap();
-        let init_value = self.interpret_expr(init_expr);
 
-        if var_found_at_env_index >= 0 {
-            if assign_stmt.indexes.is_empty() {
-                // only simple variable assignment
-                self.envs[var_found_at_env_index as usize].insert(var_key.clone(), Some(init_value));
-            } else {
-                // assignment to element in a array
-
-                // effective_index is index of deepest nested array, to which init_val will be assigned
-                let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
-                let mut evaluated_index_exprs: Vec<usize> = Vec::new();
-                for i in 0..assign_stmt.indexes.len() {
-                    let index = self.interpret_expr(assign_stmt.indexes[i].clone());
-                    match  index {
-                        DataType::List(arr_i) => {
-                            match self.lists[arr_i][0] {
-                                DataType::Num(i) => evaluated_index_exprs.push(i as usize),
-                                _ => panic!(),
-                            }
-                        }
-                        _ => panic!(),
-                    }
-                }
-
-                let var = self.envs[var_found_at_env_index as usize]
-                    .get(var_key.as_str()).unwrap();
-
-                match var {
-                    Some(DataType::List(i)) => {
-                        let array_copy = self.lists.clone();
-                        let arr = self.lists.get_mut(*i).unwrap();
-
-                        if assign_stmt.indexes.len() == 1 {
-                            // single dimensional list
-                            // changing list element at only one level deep
-                            match effective_index {
-                                DataType::List(j) => {
-                                    let a = array_copy[j].clone();
-                                    match a[0] {
-                                        DataType::Num(n) => arr[n as usize] = init_value,
-                                        _ => panic!(),
-                                    }
-                                },
-                                _ => panic!(),
-                            }
-                        } else {
-                            // multidimensional array so need to traverse nested list ore record
-                            let mut assignee: DataType = arr.get(evaluated_index_exprs.get(0).unwrap().clone()).unwrap().clone();
-
-                            for i in 1..evaluated_index_exprs.len() {
-                                if i == evaluated_index_exprs.len() - 1 {
-                                    match assignee {
-                                        DataType::List(arr_i) => {
-                                            //let a = self.arrays.get_mut(arr_i).unwrap();
-                                            let index = evaluated_index_exprs.get(i).unwrap();
-                                            self.lists[arr_i][index.clone()] = init_value.clone();
-                                            //a[index.clone()] = init_value.clone();
-                                            break;
-                                        },
-                                        _ => panic!("Cannot assign at index if data type is not array"),
-                                    }
-                                } else {
-                                    match assignee {
-                                        DataType::List(arr_i) => {
-                                            let a = self.lists.get_mut(arr_i).unwrap();
-                                            let index = evaluated_index_exprs.get(i).unwrap();
-                                            assignee = a.get(index.clone()).unwrap().clone();
-                                        },
-                                        _ => panic!("Cannot index if not array"),
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    _ => panic!("Variable wasn't initialized {:#}", var_key),
-                }
-            }
-        } else {
-            panic!("Variable wasn't initialized {:#}", var_key);
-        }
+        return var_found_at_env_index;
     }
 
     fn interpret_funcdef(&mut self) {
