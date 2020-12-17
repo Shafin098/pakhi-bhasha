@@ -3,6 +3,12 @@ use crate::frontend::parser;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
 use crate::common::io::{IO, RealIO};
+use crate::frontend::parser::Expr::Indexing;
+
+enum Index {
+    List(usize),
+    NamelessRecord(String),
+}
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum DataType {
@@ -53,7 +59,7 @@ impl<T: IO> Interpreter<'_, T> {
             previous_if_was_executed: Vec::new(),
             lists: Vec::new(),
             nameless_records: Vec::new(),
-            io: io,
+            io,
         }
     }
 
@@ -295,7 +301,7 @@ impl<T: IO> Interpreter<'_, T> {
     fn reassign_to_list_or_index(&mut self, assign_stmt: parser::Assignment, var_key: String, var_found_at_env_index: i32, init_value: DataType) {
         // effective_index is index of deepest nested array, to which init_val will be assigned
         let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
-        let evaluated_indexes: Vec<usize> = self.evaluate_all_indexes(assign_stmt.indexes.clone());
+        let evaluated_indexes: Vec<Index> = self.evaluate_all_indexes(assign_stmt.indexes.clone());
 
         let var = self.get_var_from_env(var_key.as_str(), var_found_at_env_index as usize);
 
@@ -330,32 +336,48 @@ impl<T: IO> Interpreter<'_, T> {
         }
     }
 
-    fn list_multi_dim_assign(&mut self, list_reference: usize, evaluated_indexes: Vec<usize>, init_value: DataType) {
+    fn list_multi_dim_assign(&mut self, list_reference: usize, evaluated_indexes: Vec<Index>, init_value: DataType) {
         let list = self.lists.get_mut(list_reference).unwrap();
-        let mut assignee: DataType = list.get(evaluated_indexes.get(0).unwrap().clone()).unwrap().clone();
 
-        for i in 1..evaluated_indexes.len() {
-            if i == evaluated_indexes.len() - 1 {
-                match assignee {
-                    DataType::List(arr_i) => {
-                        //let a = self.arrays.get_mut(arr_i).unwrap();
-                        let index = evaluated_indexes.get(i).unwrap();
-                        self.lists[arr_i][index.clone()] = init_value.clone();
-                        //a[index.clone()] = init_value.clone();
-                        break;
-                    },
-                    _ => panic!("Cannot assign at index if data type is not array"),
+        match evaluated_indexes.get(0).unwrap() {
+            Index::List(list_ref) => {
+                let mut assignee: DataType = list.get(list_ref.clone()).unwrap().clone();
+
+                for i in 1..evaluated_indexes.len() {
+                    if i == evaluated_indexes.len() - 1 {
+                        match assignee {
+                            DataType::List(arr_i) => {
+                                //let a = self.arrays.get_mut(arr_i).unwrap();
+                                let index = evaluated_indexes.get(i).unwrap();
+                                match index {
+                                    Index::List(i) => {
+                                        self.lists[arr_i][i.clone()] = init_value.clone();
+                                        //a[index.clone()] = init_value.clone();
+                                        break;
+                                    },
+                                    _ => panic!()
+                                }
+                            }
+                            _ => panic!("Cannot assign at index if data type is not array"),
+                        }
+                    } else {
+                        match assignee {
+                            DataType::List(arr_i) => {
+                                let a = self.lists.get_mut(arr_i).unwrap();
+                                let index = evaluated_indexes.get(i).unwrap();
+                                match index {
+                                    Index::List(i) => {
+                                        assignee = a.get(i.clone()).unwrap().clone();
+                                    },
+                                    _ => panic!(),
+                                }
+                            },
+                            _ => panic!("Cannot index if not array"),
+                        }
+                    }
                 }
-            } else {
-                match assignee {
-                    DataType::List(arr_i) => {
-                        let a = self.lists.get_mut(arr_i).unwrap();
-                        let index = evaluated_indexes.get(i).unwrap();
-                        assignee = a.get(index.clone()).unwrap().clone();
-                    },
-                    _ => panic!("Cannot index if not array"),
-                }
-            }
+            },
+            _ => panic!(),
         }
     }
 
@@ -379,15 +401,16 @@ impl<T: IO> Interpreter<'_, T> {
         return self.envs[env_index].get(var_name).unwrap().clone();
     }
 
-    fn evaluate_all_indexes(&mut self, index_exprs: Vec<parser::Expr>) -> Vec<usize> {
-        let mut evaluated_index_exprs: Vec<usize> = Vec::new();
+    fn evaluate_all_indexes(&mut self, index_exprs: Vec<parser::Expr>) -> Vec<Index> {
+        let mut evaluated_index_exprs: Vec<Index> = Vec::new();
 
         for i in 0..index_exprs.len() {
             let index = self.interpret_expr(index_exprs[i].clone());
             match  index {
                 DataType::List(arr_i) => {
-                    match self.lists[arr_i][0] {
-                        DataType::Num(i) => evaluated_index_exprs.push(i as usize),
+                    match self.lists[arr_i][0].clone() {
+                        DataType::Num(i) => evaluated_index_exprs.push(Index::List(i as usize)),
+                        DataType::String(key) => evaluated_index_exprs.push(Index::NamelessRecord(key)),
                         _ => panic!(),
                     }
                 }
