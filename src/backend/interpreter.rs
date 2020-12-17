@@ -295,7 +295,7 @@ impl<T: IO> Interpreter<'_, T> {
     fn reassign_to_list_or_index(&mut self, assign_stmt: parser::Assignment, var_key: String, var_found_at_env_index: i32, init_value: DataType) {
         // effective_index is index of deepest nested array, to which init_val will be assigned
         let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
-        let evaluated_index_exprs: Vec<usize> = self.evaluate_all_indexes(assign_stmt.indexes.clone());
+        let evaluated_indexes: Vec<usize> = self.evaluate_all_indexes(assign_stmt.indexes.clone());
 
         let var = self.get_var_from_env(var_key.as_str(), var_found_at_env_index as usize);
 
@@ -307,33 +307,7 @@ impl<T: IO> Interpreter<'_, T> {
                     self.list_single_dim_assign(i, effective_index, init_value);
                 } else {
                     // multidimensional array so need to traverse nested list ore record
-
-                    let list = self.lists.get_mut(i).unwrap();
-                    let mut assignee: DataType = list.get(evaluated_index_exprs.get(0).unwrap().clone()).unwrap().clone();
-
-                    for i in 1..evaluated_index_exprs.len() {
-                        if i == evaluated_index_exprs.len() - 1 {
-                            match assignee {
-                                DataType::List(arr_i) => {
-                                    //let a = self.arrays.get_mut(arr_i).unwrap();
-                                    let index = evaluated_index_exprs.get(i).unwrap();
-                                    self.lists[arr_i][index.clone()] = init_value.clone();
-                                    //a[index.clone()] = init_value.clone();
-                                    break;
-                                },
-                                _ => panic!("Cannot assign at index if data type is not array"),
-                            }
-                        } else {
-                            match assignee {
-                                DataType::List(arr_i) => {
-                                    let a = self.lists.get_mut(arr_i).unwrap();
-                                    let index = evaluated_index_exprs.get(i).unwrap();
-                                    assignee = a.get(index.clone()).unwrap().clone();
-                                },
-                                _ => panic!("Cannot index if not array"),
-                            }
-                        }
-                    }
+                    self.list_multi_dim_assign(i, evaluated_indexes, init_value.clone());
                 }
             },
             _ => panic!("Variable wasn't initialized {:#}", var_key),
@@ -353,6 +327,35 @@ impl<T: IO> Interpreter<'_, T> {
                 }
             },
             _ => panic!(),
+        }
+    }
+
+    fn list_multi_dim_assign(&mut self, list_reference: usize, evaluated_indexes: Vec<usize>, init_value: DataType) {
+        let list = self.lists.get_mut(list_reference).unwrap();
+        let mut assignee: DataType = list.get(evaluated_indexes.get(0).unwrap().clone()).unwrap().clone();
+
+        for i in 1..evaluated_indexes.len() {
+            if i == evaluated_indexes.len() - 1 {
+                match assignee {
+                    DataType::List(arr_i) => {
+                        //let a = self.arrays.get_mut(arr_i).unwrap();
+                        let index = evaluated_indexes.get(i).unwrap();
+                        self.lists[arr_i][index.clone()] = init_value.clone();
+                        //a[index.clone()] = init_value.clone();
+                        break;
+                    },
+                    _ => panic!("Cannot assign at index if data type is not array"),
+                }
+            } else {
+                match assignee {
+                    DataType::List(arr_i) => {
+                        let a = self.lists.get_mut(arr_i).unwrap();
+                        let index = evaluated_indexes.get(i).unwrap();
+                        assignee = a.get(index.clone()).unwrap().clone();
+                    },
+                    _ => panic!("Cannot index if not array"),
+                }
+            }
         }
     }
 
