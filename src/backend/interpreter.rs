@@ -290,7 +290,7 @@ impl<T: IO> Interpreter<'_, T> {
                 self.envs[var_found_at_env_index as usize].insert(var_key, Some(init_value));
             } else {
                 // assignment to element in a list or record
-                self.reassign_to_list_or_index(assign_stmt, var_key, var_found_at_env_index, init_value);
+                self.reassign_to_list_or_record(assign_stmt, var_key, var_found_at_env_index, init_value);
             }
         } else {
             panic!("Variable wasn't declared {:#}", var_key);
@@ -298,7 +298,7 @@ impl<T: IO> Interpreter<'_, T> {
     }
 
     // reassign a value to a list or record at provided index
-    fn reassign_to_list_or_index(&mut self, assign_stmt: parser::Assignment, var_key: String, var_found_at_env_index: i32, init_value: DataType) {
+    fn reassign_to_list_or_record(&mut self, assign_stmt: parser::Assignment, var_key: String, var_found_at_env_index: i32, init_value: DataType) {
         // effective_index is index of deepest nested array, to which init_val will be assigned
         let effective_index = self.interpret_expr(assign_stmt.indexes.last().unwrap().clone());
         let evaluated_indexes: Vec<Index> = self.evaluate_all_indexes(assign_stmt.indexes.clone());
@@ -316,20 +316,46 @@ impl<T: IO> Interpreter<'_, T> {
                     self.list_multi_dim_assign(i, evaluated_indexes, init_value.clone());
                 }
             },
-            _ => panic!("Variable wasn't initialized {:#}", var_key),
+            Some(DataType::NamelessRecord(record_ref)) => {
+                if assign_stmt.indexes.len() == 1 {
+                    // single dimensional list
+                    // changing list element at only one level deep
+                    self.record_single_dim_assign(record_ref, effective_index, init_value);
+                } else {
+                    // multidimensional array so need to traverse nested list ore record
+                    //self.record_multi_dim_assign(record_ref, evaluated_indexes, init_value.clone());
+                }
+            },
+            _ => panic!("Variable wasn't declared {:#}", var_key),
         }
     }
 
-    fn list_single_dim_assign(&mut self, list_reference: usize, index: DataType, init_value: DataType) {
+    fn list_single_dim_assign(&mut self, list_ref: usize, index: DataType, init_value: DataType) {
         match index {
             DataType::List(j) => {
                 let a = self.lists[j].clone();
-                match a[0] {
+                match a[0].clone() {
                     DataType::Num(n) => {
-                        let list = self.lists.get_mut(list_reference).unwrap();
+                        let list = self.lists.get_mut(list_ref).unwrap();
                         list[n as usize] = init_value
                     },
                     _ => panic!(),
+                }
+            },
+            _ => panic!(),
+        }
+    }
+
+    fn record_single_dim_assign(&mut self, record_ref: usize, index: DataType, init_value: DataType) {
+        match index {
+            DataType::List(j) => {
+                let a = self.lists[j].clone();
+                match a[0].clone() {
+                    DataType::String(key) => {
+                        let record = self.nameless_records.get_mut(record_ref).unwrap();
+                        record.insert(key, init_value);
+                    },
+                    _ => panic!("Records must be indexed by a string key"),
                 }
             },
             _ => panic!(),
@@ -1099,7 +1125,7 @@ mod tests {
                         "\"key\": ১,",
                         "\"key\": ১ + ১,",
                       "};",
-           "দেখাও ক;",
+            "দেখাও ক;",
        ]);
         let mut mock_io: MockIO = MockIO::new();
         mock_io.expect_print("@{");
@@ -1107,6 +1133,21 @@ mod tests {
         mock_io.expect_print("২");
         mock_io.expect_print(",");
         mock_io.expect_println("}");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn nameless_record_single_dim_indexing() {
+        let ast = src_to_ast(vec![
+            "নাম ক =  @{",
+            "\"key\": ১,",
+            "\"key\": ১ + ১,",
+            "};",
+            r#"ক["key"] = "string";"#,
+            r#"দেখাও ক["key"];"#,
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("string");
         run_assert_all_true(ast, mock_io);
     }
 
