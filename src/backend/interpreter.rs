@@ -323,7 +323,7 @@ impl<T: IO> Interpreter<'_, T> {
                     self.record_single_dim_assign(record_ref, effective_index, init_value);
                 } else {
                     // multidimensional array so need to traverse nested list ore record
-                    //self.record_multi_dim_assign(record_ref, evaluated_indexes, init_value.clone());
+                    self.record_multi_dim_assign(record_ref, evaluated_indexes, init_value.clone());
                 }
             },
             _ => panic!("Variable wasn't declared {:#}", var_key),
@@ -403,6 +403,49 @@ impl<T: IO> Interpreter<'_, T> {
                     }
                 }
             },
+            _ => panic!(),
+        }
+    }
+
+    fn record_multi_dim_assign(&mut self, record_reference: usize, evaluated_indexes: Vec<Index>, init_value: DataType) {
+        let record = self.nameless_records.get_mut(record_reference).unwrap();
+
+        match evaluated_indexes.get(0).unwrap() {
+            Index::NamelessRecord(key) => {
+                let mut assignee: DataType = record.get(key).unwrap().clone();
+
+                for i in 1..evaluated_indexes.len() {
+                    if i == evaluated_indexes.len() - 1 {
+                        match assignee {
+                            DataType::NamelessRecord(record_i) => {
+                                let index = evaluated_indexes.get(i).unwrap();
+                                match index {
+                                    Index::NamelessRecord(k) => {
+                                        self.nameless_records[record_i].insert(k.clone(), init_value);
+                                        break;
+                                    }
+                                    _ => panic!()
+                                }
+                            }
+                            _ => panic!("Cannot assign at index if data type is not array"),
+                        }
+                    } else {
+                        match assignee {
+                            DataType::NamelessRecord(record_i) => {
+                                let r = self.nameless_records.get_mut(record_i).unwrap();
+                                let index = evaluated_indexes.get(i).unwrap();
+                                match index {
+                                    Index::NamelessRecord(k) => {
+                                        assignee = r.get(k).unwrap().clone();
+                                    },
+                                    _ => panic!(),
+                                }
+                            }
+                            _ => panic!("Cannot index if not array"),
+                        }
+                    }
+                }
+            }
             _ => panic!(),
         }
     }
@@ -1044,10 +1087,21 @@ mod tests {
     }
 
     #[test]
-    fn var_decl_list() {
+    fn list_single_dim_indexing() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
             "দেখাও ক[১];"
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("২");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn list_multi_dim_indexing() {
+        let ast = src_to_ast(vec![
+            "নাম ক = [১, [১, ২, ৩], ৩];",
+            "দেখাও ক[১][১];"
         ]);
         let mut mock_io: MockIO = MockIO::new();
         mock_io.expect_println("২");
@@ -1145,6 +1199,19 @@ mod tests {
             "};",
             r#"ক["key"] = "string";"#,
             r#"দেখাও ক["key"];"#,
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("string");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn nameless_record_multi_dim_indexing() {
+        let ast = src_to_ast(vec![
+            "নাম ক =  @{",
+            "\"key\": @{\"key_2\": \"string\",},",
+            "};",
+            r#"দেখাও ক["key"]["key_2"];"#,
         ]);
         let mut mock_io: MockIO = MockIO::new();
         mock_io.expect_println("string");
