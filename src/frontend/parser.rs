@@ -597,10 +597,10 @@ impl Parser {
                     keys.push(self.expression());
 
                     // Token after key should be colon
-                    if self.tokens[self.current].kind != TokenKind::Colon {
-                        panic!("Expected : after key name at line: {}", self.tokens[self.current].line);
+                    if self.tokens[self.current].kind != TokenKind::Map {
+                        panic!("Expected -> after key name at line: {}", self.tokens[self.current].line);
                     }
-                    // consuming : token
+                    // consuming Map '->' token
                     self.current += 1;
 
                     // pushing value of a key-value pair
@@ -838,9 +838,9 @@ mod tests {
     #[test]
     fn parse_test_namesless_record_literal() {
         let tokens = lexer::tokenize(r#"নাম ক =  @{
-                                                                "key": ১,
-                                                                "key_2": "string",
-                                                                "key": ১ + ১,
+                                                                "key" -> ১,
+                                                                "key_2" -> "string",
+                                                                "key" -> ১ + ১,
                                                             };"#.chars().collect());
         let ast = parse(tokens);
         let expected_ast = Stmt::Assignment(

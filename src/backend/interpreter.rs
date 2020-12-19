@@ -1109,6 +1109,19 @@ mod tests {
     }
 
     #[test]
+    fn list_multi_dim_mixed_indexing() {
+        let ast = src_to_ast(vec![
+            r#"নাম ক = [১, ২, ৩, @{"key" -> [১,২], "key_2" -> ৪,}];"#,
+            r#"দেখাও ক[৩]["key"][০];"#,
+            r#"দেখাও ক[৩]["key_2"];"#,
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("১");
+        mock_io.expect_println("৪");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
     fn list_mutate_push() {
         let ast = src_to_ast(vec![
             "নাম ক = [১, ২, ৩];",
@@ -1176,8 +1189,8 @@ mod tests {
     fn nameless_record_literal() {
         let ast = src_to_ast(vec![
             "নাম ক =  @{",
-                        "\"key\": ১,",
-                        "\"key\": ১ + ১,",
+                        "\"key\" -> ১,",
+                        "\"key\" -> ১ + ১,",
                       "};",
             "দেখাও ক;",
        ]);
@@ -1194,8 +1207,8 @@ mod tests {
     fn nameless_record_single_dim_indexing() {
         let ast = src_to_ast(vec![
             "নাম ক =  @{",
-            "\"key\": ১,",
-            "\"key\": ১ + ১,",
+            "\"key\" -> ১,",
+            "\"key\" -> ১ + ১,",
             "};",
             r#"ক["key"] = "string";"#,
             r#"দেখাও ক["key"];"#,
@@ -1209,12 +1222,25 @@ mod tests {
     fn nameless_record_multi_dim_indexing() {
         let ast = src_to_ast(vec![
             "নাম ক =  @{",
-            "\"key\": @{\"key_2\": \"string\",},",
+            "\"key\" -> @{\"key_2\" -> \"string\",},",
             "};",
             r#"দেখাও ক["key"]["key_2"];"#,
         ]);
         let mut mock_io: MockIO = MockIO::new();
         mock_io.expect_println("string");
+        run_assert_all_true(ast, mock_io);
+    }
+
+    #[test]
+    fn nameless_record_multi_dim_mixed_indexing() {
+        let ast = src_to_ast(vec![
+            r#"নাম ক = @{"key" -> [১, ২, ৩, @{"key" -> ১,}],};"#,
+            r#"দেখাও ক["key"][২];"#,
+            r#"দেখাও ক["key"][৩]["key"];"#,
+        ]);
+        let mut mock_io: MockIO = MockIO::new();
+        mock_io.expect_println("৩");
+        mock_io.expect_println("১");
         run_assert_all_true(ast, mock_io);
     }
 

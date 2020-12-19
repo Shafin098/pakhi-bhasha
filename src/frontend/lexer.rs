@@ -24,7 +24,7 @@ pub enum TokenKind {
     Remainder,
     At,
     Semicolon,
-    Colon,
+    Map,
     Comma,
     ParenStart,
     ParenEnd,
@@ -96,15 +96,28 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     line: line + consumed_line,
                 }
             } else {
-                // not a negative number, binary '-' operator
-                consumed_char = 1;
-                consumed_line = 0;
-                token = Token {
-                    kind: TokenKind::Minus,
-                    lexeme: src[start..(start+1)].to_vec(),
-                    line,
-                }}
+                // not a negative number, binary '-' operator or map operator '->' in record
 
+                if src[start+1] == '>' {
+                    // map operator '->' in record
+                    consumed_char = 2;
+                    consumed_line = 0;
+                    token = Token {
+                        kind: TokenKind::Map,
+                        lexeme: src[start..(start+2)].to_vec(),
+                        line,
+                    }
+                } else {
+                    // binary '-' operator
+                    consumed_char = 1;
+                    consumed_line = 0;
+                    token = Token {
+                        kind: TokenKind::Minus,
+                        lexeme: src[start..(start+1)].to_vec(),
+                        line,
+                    }
+                }
+            }
         },
         '+' => {
             consumed_char = 1;
@@ -184,15 +197,6 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
             consumed_line = 0;
             token = Token {
                 kind: TokenKind::At,
-                lexeme: src[start..(start+1)].to_vec(),
-                line,
-            }
-        },
-        ':' => {
-            consumed_char = 1;
-            consumed_line = 0;
-            token = Token {
-                kind: TokenKind::Colon,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
             }
@@ -596,11 +600,11 @@ mod tests {
     #[test]
     fn tokenize_nameless_record_literal() {
         let tokens = tokenize(
-            r#"@ {"key": ১,}"#.chars().collect::<Vec<char>>());
+            r#"@ {"key" -> ১,}"#.chars().collect::<Vec<char>>());
         assert_eq!(TokenKind::At, tokens[0].kind);
         assert_eq!(TokenKind::CurlyBraceStart, tokens[1].kind);
         assert_eq!(TokenKind::String(String::from("key")), tokens[2].kind);
-        assert_eq!(TokenKind::Colon, tokens[3].kind);
+        assert_eq!(TokenKind::Map, tokens[3].kind);
         assert_eq!(TokenKind::Num(1.0), tokens[4].kind);
         assert_eq!(TokenKind::Comma, tokens[5].kind);
         assert_eq!(TokenKind::CurlyBraceEnd, tokens[6].kind);
