@@ -6,6 +6,7 @@ Pakhi is a dynamically typed, general purpose programming language with bangla s
 - __বুলিয়ান_
 - __স্ট্রিং_
 - __লিস্ট_
+- __রেকর্ড_
 - __ফাং_
 - __শূন্য_
 #### Variable declaration
@@ -23,6 +24,22 @@ Pakhi is a dynamically typed, general purpose programming language with bangla s
 } অথবা {
     দেখাও "জানা নেই";
 }
+```
+#### List
+```
+নাম সংখ্যা = [১, ২, ৩, ৪, ৫];
+দেখাও সংখ্যা[০];
+```
+#### Record
+```
+নাম তথ্য =  @{
+    "নাম" -> "সিফাত",
+    "বয়স" -> ৪২,
+    "ফোন-নাম্বার" -> ["০১৭১১১১১১১১", "০১৭৩৩৩৩৩৩৩৩"],
+};
+দেখাও তথ্য["নাম"];
+দেখাও তথ্য["বয়স"];
+দেখাও তথ্য["ফোন-নাম্বার"];
 ```
 #### Loop statement
 ```
