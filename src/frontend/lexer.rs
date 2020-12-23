@@ -25,6 +25,7 @@ pub enum TokenKind {
     At,
     Semicolon,
     Map,
+    Comment,
     Comma,
     ParenStart,
     ParenEnd,
@@ -198,6 +199,16 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
             token = Token {
                 kind: TokenKind::At,
                 lexeme: src[start..(start+1)].to_vec(),
+                line,
+            }
+        },
+        '#' => {
+            let (char_skipped, lines_skipped) = skip_comment_block(src, start);
+            consumed_char = char_skipped;
+            consumed_line = lines_skipped;
+            token = Token {
+                kind: TokenKind::Comment,
+                lexeme: src[start..(start+char_skipped)].to_vec(),
                 line,
             }
         },
@@ -502,12 +513,35 @@ fn bn_digit_to_en_digit(digit: char) -> f64 {
     }
 }
 
+fn skip_comment_block(src: &Vec<char>, start: usize) -> (usize, u32) {
+    let mut char_skipped: usize = 1;
+    let mut lines_skipped: u32 = 0;
+    while src[start + char_skipped] != '#' {
+        if (start + char_skipped + 1) > src.len() - 1 {
+            panic!("Comment block wasn't closed");
+        }
+        if src[start + char_skipped] == '\\' && src[start + char_skipped + 1] == '#' {
+            // if # escaped with \ skipping this #
+            char_skipped += 2;
+            continue;
+        }
+        char_skipped += 1;
+        if src[start + char_skipped] == '\n' {
+            lines_skipped += 1;
+        }
+    }
+    // skipping last #
+    char_skipped += 1;
+
+    (char_skipped, lines_skipped)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::frontend::lexer::*;
 
     #[test]
-    fn consume_num_test_1() {
+    fn lexer_consume_num_test_1() {
         let digits_1 = vec!['২', '৪', '৫'];
 
         let (val, consumed) = consume_num(&digits_1, 0);
@@ -516,7 +550,7 @@ mod tests {
     }
 
     #[test]
-    fn consume_num_test_2() {
+    fn lexer_consume_num_test_2() {
         let digits_2 = vec!['২', '৪', '৫', ' ', '২'];
 
         let (val, consumed) = consume_num(&digits_2, 0);
@@ -525,7 +559,7 @@ mod tests {
     }
 
     #[test]
-    fn consume_num_test_3() {
+    fn lexer_consume_num_test_3() {
         let digits_3 = vec!['২', '৪', '৫', '.', '২', '৩', '৬'];
 
         let (val, consumed) = consume_num(&digits_3, 0);
@@ -534,7 +568,7 @@ mod tests {
     }
 
     #[test]
-    fn consume_num_test_4() {
+    fn lexer_consume_num_test_4() {
         let digits_4 = vec!['-', '২', '৪', '৫', '.', '২', '৩', '৬'];
 
         let (val, consumed) = consume_num(&digits_4, 0);
@@ -543,7 +577,7 @@ mod tests {
     }
 
     #[test]
-    fn consume_num_test_5() {
+    fn lexer_consume_num_test_5() {
         let digits_5 = vec!['০'];
 
         let (val, consumed) = consume_num(&digits_5, 0);
@@ -552,7 +586,7 @@ mod tests {
     }
 
     #[test]
-    fn consume_string_test() {
+    fn lexer_consume_string_test() {
         let string: Vec<char> = "\" var a = 45;\"".chars().collect();
 
         let (val, consumed) = consume_string(&string, 0);
@@ -561,34 +595,34 @@ mod tests {
     }
 
     #[test]
-    fn keyword_test_1() {
+    fn lexer_keyword_test_1() {
         let kword: Vec<char> = "ফাং".chars().collect();
         let t = keyword(&kword, 0).unwrap();
         assert_eq!(TokenKind::Function, t.kind);
     }
 
     #[test]
-    fn keyword_test_2() {
+    fn lexer_keyword_test_2() {
         let kword: Vec<char> = "নাম".chars().collect();
         let t = keyword(&kword, 0).unwrap();
         assert_eq!(TokenKind::Var, t.kind);
     }
 
     #[test]
-    fn keyword_test_3() {
+    fn lexer_keyword_test_3() {
         let kword: Vec<char> = "লুপ".chars().collect();
         let t = keyword(&kword, 0).unwrap();
         assert_eq!(TokenKind::Loop, t.kind);
     }
 
     #[test]
-    fn keyword_test_4() {
+    fn lexer_keyword_test_4() {
         let kword: Vec<char> = "abc".chars().collect();
         assert!(keyword(&kword, 0).is_none());
     }
 
     #[test]
-    fn tokenize_test_1() {
+    fn lexer_var_declare() {
         let tokens = tokenize("নাম ল = ০;".chars().collect::<Vec<char>>());
         assert_eq!(TokenKind::Var, tokens[0].kind);
         assert_eq!(TokenKind::Identifier, tokens[1].kind);
@@ -598,7 +632,7 @@ mod tests {
     }
 
     #[test]
-    fn tokenize_nameless_record_literal() {
+    fn lexer_nameless_record_literal() {
         let tokens = tokenize(
             r#"@ {"key" -> ১,}"#.chars().collect::<Vec<char>>());
         assert_eq!(TokenKind::At, tokens[0].kind);
@@ -608,5 +642,19 @@ mod tests {
         assert_eq!(TokenKind::Num(1.0), tokens[4].kind);
         assert_eq!(TokenKind::Comma, tokens[5].kind);
         assert_eq!(TokenKind::CurlyBraceEnd, tokens[6].kind);
+    }
+
+    #[test]
+    fn lexer_comment_block() {
+        let tokens = tokenize("# this is a comment # \
+                                                নাম ল = ০;\
+                                              #this is a second comment#".chars().collect::<Vec<char>>());
+        assert_eq!(TokenKind::Comment, tokens[0].kind);
+        assert_eq!(TokenKind::Var, tokens[1].kind);
+        assert_eq!(TokenKind::Identifier, tokens[2].kind);
+        assert_eq!(TokenKind::Equal, tokens[3].kind);
+        assert_eq!(TokenKind::Num(0.0), tokens[4].kind);
+        assert_eq!(TokenKind::Semicolon, tokens[5].kind);
+        assert_eq!(TokenKind::Comment, tokens[6].kind);
     }
 }

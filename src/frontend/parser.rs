@@ -160,6 +160,12 @@ impl Parser {
             TokenKind::Function => self.func_def_stmt(),
             TokenKind::Return => self.return_stmt(),
             TokenKind::At => todo!(),
+            TokenKind::Comment => {
+                // skipping comment block
+                self.current += 1;
+                // returning next statement
+                return self.statements();
+            },
              _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
