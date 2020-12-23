@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Pakhi Runner"
-#define MyAppVersion "0.6.1-alpha"
+#define MyAppVersion "0.7.0-alpha"
 #define MyAppPublisher "Shafin Ashraf"
 #define MyAppURL "https://github.com/Shafin098/pakhi-bhasha"
 #define MyAppExeName "Pakhi Runner.exe"
