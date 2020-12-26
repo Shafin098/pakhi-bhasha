@@ -48,6 +48,7 @@ pub enum TokenKind {
     Continue,
     Return,
     Print,
+    Module,
     PrintNoEOL,
     EOT, // represents end of token, only needed for parsing to indicate
          // all previous tokens were consumed
@@ -486,6 +487,7 @@ fn keyword(char_vec: &Vec<char>, line: u32) -> Option<Token> {
     keyword_map.insert("_দেখাও".chars().collect(), TokenKind::PrintNoEOL);
     keyword_map.insert("সত্য".chars().collect(), TokenKind::Bool(true));
     keyword_map.insert("মিথ্যা".chars().collect(), TokenKind::Bool(false));
+    keyword_map.insert("মডিউল".chars().collect(), TokenKind::Module);
 
     match keyword_map.remove(char_vec) {
         Some(token_kind) => Some(Token {

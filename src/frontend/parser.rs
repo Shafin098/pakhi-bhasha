@@ -3,6 +3,7 @@ use crate::frontend::lexer::TokenKind;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
+    Module(String),
     Print(Expr),
     PrintNoEOL(Expr),
     Assignment(Assignment),
@@ -24,7 +25,7 @@ pub enum Stmt {
 pub struct Assignment {
     pub kind: AssignmentKind,
     pub var_name: Token,
-    // assignment could me made to array element, so indexes are needed
+    // assignment could me made to list or record element, so indexes are needed
     pub indexes: Vec<Expr>,
     pub init_value: Option<Expr>,
 }
@@ -165,6 +166,25 @@ impl Parser {
                 self.current += 1;
                 // returning next statement
                 return self.statements();
+            },
+            TokenKind::Module => {
+                // skipping module token
+                self.current += 1;
+
+                if let TokenKind::String(module_name) = self.tokens[self.current].kind.clone() {
+                    // skipping module name string token
+                    self.current += 1;
+                    if self.tokens[self.current].kind == TokenKind::Semicolon {
+                        // skipping semicolon ';' token
+                        self.current += 1;
+                    } else {
+                        panic!("Error at line: {}, Expected ; after module name", self.tokens[self.current].line);
+                    }
+
+                    return Stmt::Module(module_name);
+                } else {
+                    panic!("Error at line: {}, Expected module name", self.tokens[self.current].line);
+                }
             },
              _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
