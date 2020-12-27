@@ -1,5 +1,9 @@
+use crate::frontend::lexer;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
+use crate::common::io;
+use crate::common::io::{RealIO, IO};
+use std::path::Path;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
@@ -95,6 +99,7 @@ pub struct FunctionCall {
 struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    main_module_path: String,
 }
 
 impl Parser {
@@ -102,6 +107,7 @@ impl Parser {
         Parser {
             tokens,
             current: 0,
+            main_module_path: String::new(),
         }
     }
 
@@ -153,12 +159,12 @@ impl Parser {
         self.current += 1;
 
         if self.tokens[self.current].kind == TokenKind::Identifier {
-            let module_name = &self.tokens[self.current].lexeme;
-            if module_name.len() == 1 && module_name[0] == '-' {
+            let module_name = self.tokens[self.current].lexeme.clone();
+            if module_name.len() == 1 && module_name[0] == '_' {
                 // unnamed module import can cause naming collision in pakhi program
                 self.unnamed_module_import();
             } else {
-                self.named_module_import(module_name.clone());
+                self.named_module_import(module_name);
             }
         } else {
             panic!("Error at line: {}, Expected a name for imported module", self.tokens[self.current].line)
@@ -173,11 +179,53 @@ impl Parser {
     }
 
     fn unnamed_module_import(&mut self) {
+        // skipping module name identifier token and equal token
+        self.current += 2;
 
+        let module_tokens;
+        if let TokenKind::String(module_path) = self.tokens[self.current].kind.clone() {
+            // skipping module path string token
+            self.current += 1;
+            module_tokens = self.get_tokens_from_module(module_path, "");
+        } else {
+            panic!("Error at line: {}, Expected module import path", self.tokens[self.current].line);
+        }
+
+        // tokens must be inserted after module import statement
+        let mut insert_token_at = self.current + 1; // + 1 required to insert after semicolon
+        for token in module_tokens {
+            if token.kind == TokenKind::EOT { continue }
+            self.tokens.insert(insert_token_at, token);
+            insert_token_at += 1;
+        }
     }
 
     fn named_module_import(&mut self, module_name: Vec<char>) {
 
+    }
+
+    fn get_tokens_from_module(&self, path: String, prepend: &str) -> Vec<Token> {
+        let module_path = Path::new(path.as_str());
+        let current_module_root = Path::new(self.main_module_path.as_str()).parent().unwrap();
+        let modules_relative_path_to_current_modules = current_module_root.join(module_path);
+        let final_module_path = modules_relative_path_to_current_modules.as_path().to_str().unwrap();
+
+        //println!("{:?}", current_module_root.to_str());
+        //println!("{:?}", module_path.to_str());
+        //println!("{:?}", modules_relative_path_to_current_modules.to_str());
+        //println!("{}", final_module_path);
+        //panic!();
+
+        let mut io = io::RealIO::new();
+        let src_string = io.read_src_code_from_file(final_module_path);
+        match src_string {
+            Ok(src) => {
+                let src_chars: Vec<char> = src.chars().collect();
+                let module_tokens = lexer::tokenize(src_chars);
+                return module_tokens;
+            },
+            Err(e) => panic!("Error opening file: {}", e)
+        }
     }
 
     fn comment_block(&mut self) -> Stmt {
@@ -672,8 +720,9 @@ impl Parser {
 }
 
 // --------------Entry-pint--------------------
-pub fn parse(tokens: Vec<Token>) -> Vec<Stmt> {
+pub fn parse(main_module_path: String, tokens: Vec<Token>) -> Vec<Stmt> {
     let mut parser = Parser::new(tokens);
+    parser.main_module_path = main_module_path;
     parser.parse()
 }
 
@@ -689,7 +738,7 @@ mod tests {
     #[test]
     fn parse_test_primary_num() {
         let tokens = lexer::tokenize("দেখাও ৫৩.৬;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Primary(Primary::Num(53.6)));
         assert_eq!(expected_ast, ast[0]);
     }
@@ -697,7 +746,7 @@ mod tests {
     #[test]
     fn parse_test_binary_addition() {
         let tokens = lexer::tokenize("দেখাও -৫৩.৬ + ৬;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
             operator: TokenKind::Plus,
             left: Box::new(Expr::Primary(Primary::Num(-53.6))),
@@ -709,7 +758,7 @@ mod tests {
     #[test]
     fn parse_test_primary_string() {
         let tokens = lexer::tokenize("দেখাও \"this is a test\";".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Primary(Primary::String(String::from("this is a test"))));
         assert_eq!(expected_ast, ast[0]);
     }
@@ -717,7 +766,7 @@ mod tests {
     #[test]
     fn parse_test_print_expr() {
         let tokens = lexer::tokenize("দেখাও ১ + ৩ * ২;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
             operator: TokenKind::Plus,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
@@ -733,7 +782,7 @@ mod tests {
     #[test]
     fn parse_test_print_equality() {
         let tokens = lexer::tokenize("দেখাও ১ == ১;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Equality(Binary {
             operator: TokenKind::EqualEqual,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
@@ -746,7 +795,7 @@ mod tests {
     #[test]
     fn parse_test_print_not_equal() {
         let tokens = lexer::tokenize("দেখাও ১ != ১;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Equality(Binary {
             operator: TokenKind::NotEqual,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
@@ -759,7 +808,7 @@ mod tests {
     #[test]
     fn parse_test_print_comparison_less() {
         let tokens = lexer::tokenize("দেখাও ১ < ১;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
             operator: TokenKind::LessThan,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
@@ -772,7 +821,7 @@ mod tests {
     #[test]
     fn parse_test_comaprison_greater() {
         let tokens = lexer::tokenize("দেখাও ১ > ১;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
             operator: TokenKind::GreaterThan,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
@@ -785,7 +834,7 @@ mod tests {
     #[test]
     fn parse_test_comparison_less_or_equla() {
         let tokens = lexer::tokenize("দেখাও ১ <= ১;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
             operator: TokenKind::LessThanOrEqual,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
@@ -798,7 +847,7 @@ mod tests {
     #[test]
     fn parse_test_comaprison_greater_or_equla() {
         let tokens = lexer::tokenize("দেখাও ১ >= ১;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Comparison(Binary {
             operator: TokenKind::GreaterThanOrEqual,
             left: Box::from(Expr::Primary(Primary::Num(1.0))),
@@ -811,7 +860,7 @@ mod tests {
     #[test]
     fn parse_test_print_logical_and() {
         let tokens = lexer::tokenize("দেখাও সত্য & মিথ্যা;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::And(And {
             left: Box::from(Expr::Primary(Primary::Bool(true))),
             right: Box::from(Expr::Primary(Primary::Bool(false))),
@@ -823,7 +872,7 @@ mod tests {
     #[test]
     fn parse_test_print_logical_or() {
         let tokens = lexer::tokenize("দেখাও সত্য | মিথ্যা;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Or(Or {
             left: Box::from(Expr::Primary(Primary::Bool(true))),
             right: Box::from(Expr::Primary(Primary::Bool(false))),
@@ -835,7 +884,7 @@ mod tests {
     #[test]
     fn parse_test_print_logical_not() {
         let tokens = lexer::tokenize("দেখাও !সত্য;".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Print(Expr::Unary(Unary {
             operator: TokenKind::Not,
             right: Box::from(Expr::Primary(Primary::Bool(true))),
@@ -847,7 +896,7 @@ mod tests {
     #[test]
     fn parse_test_assignment_string() {
         let tokens = lexer::tokenize("নাম ল = \"red\";".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Assignment(Assignment {
             kind: AssignmentKind::FirstAssignment,
             var_name: Token {
@@ -865,7 +914,7 @@ mod tests {
     #[test]
     fn parse_test_re_assignment_string() {
         let tokens = lexer::tokenize("ল = \"red\";".chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Assignment(Assignment {
             kind: AssignmentKind::Reassignment,
             var_name: Token {
@@ -887,7 +936,7 @@ mod tests {
                                                                 "key_2" -> "string",
                                                                 "key" -> ১ + ১,
                                                             };"#.chars().collect());
-        let ast = parse(tokens);
+        let ast = parse(String::from(""), tokens);
         let expected_ast = Stmt::Assignment(
             Assignment {
                 kind: FirstAssignment,

@@ -1,6 +1,6 @@
 mod frontend;
 mod backend;
-mod common;
+pub mod common;
 
 pub use frontend::lexer;
 pub use frontend::parser;

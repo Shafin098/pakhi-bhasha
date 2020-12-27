@@ -1,8 +1,11 @@
+use std::io::Error;
+
 pub trait IO {
     fn new() -> Self;
     fn print(&mut self, m: &str);
     fn println(&mut self, m: &str);
     fn error(&mut self, m: &str);
+    fn read_src_code_from_file(&mut self, filename: &str) -> Result<String, std::io::Error>;
 }
 
 pub struct RealIO;
@@ -22,6 +25,13 @@ impl IO for RealIO {
 
     fn error(&mut self, m: &str) {
         eprintln!("{}", m);
+    }
+
+    fn read_src_code_from_file(&mut self, file_path: &str) -> Result<String, Error> {
+        match std::fs::read_to_string(file_path) {
+            Ok(src_string) => Ok(src_string),
+            Err(e) => Err(e)
+        }
     }
 }
 
@@ -89,5 +99,9 @@ impl IO for MockIO {
     fn error(&mut self, m: &str) {
         self.error.push(String::from(m));
         self.op_order.push(String::from("error"));
+    }
+
+    fn read_src_code_from_file(&mut self, filename: &str) -> Result<String, Error> {
+        unimplemented!()
     }
 }
