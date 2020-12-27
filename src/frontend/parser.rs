@@ -3,7 +3,6 @@ use crate::frontend::lexer::TokenKind;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
-    Module(String),
     Print(Expr),
     PrintNoEOL(Expr),
     Assignment(Assignment),
@@ -129,28 +128,9 @@ impl Parser {
     fn statements(&mut self) -> Stmt {
         match self.tokens[self.current].kind {
             TokenKind::Print => self.print_stmt(),
-            TokenKind::PrintNoEOL => {
-                // consuming token
-                self.current += 1;
-                let expr = self.expression();
-                //consuming last ';' of print statement
-                self.current += 1;
-
-                Stmt::PrintNoEOL(expr)
-            },
+            TokenKind::PrintNoEOL => self.print_no_newline_stmt(),
             TokenKind::Var => self.assignment_stmt(),
-            TokenKind::Identifier => {
-                // probably array indexing after function call won't work
-                if self.tokens[self.current + 1].kind == TokenKind::ParenStart {
-                    // assuming its a function call statement
-                    let expr = self.expression();
-
-                    return Stmt::Expression(expr);
-                }
-                // if next token is not paren assuming it's a reassignment statement, or expression
-                // statement which ony has identifier
-                self.re_assignment_stmt()
-            },
+            TokenKind::Identifier => self.re_assignment_or_func_call_stmt(),
             TokenKind::CurlyBraceStart => self.block_start(),
             TokenKind::CurlyBraceEnd => self.block_end(),
             TokenKind::If => self.if_statement(),
@@ -161,34 +141,73 @@ impl Parser {
             TokenKind::Function => self.func_def_stmt(),
             TokenKind::Return => self.return_stmt(),
             TokenKind::At => todo!(),
-            TokenKind::Comment => {
-                // skipping comment block
-                self.current += 1;
-                // returning next statement
-                return self.statements();
-            },
-            TokenKind::Module => {
-                // skipping module token
-                self.current += 1;
-
-                if let TokenKind::String(module_name) = self.tokens[self.current].kind.clone() {
-                    // skipping module name string token
-                    self.current += 1;
-                    if self.tokens[self.current].kind == TokenKind::Semicolon {
-                        // skipping semicolon ';' token
-                        self.current += 1;
-                    } else {
-                        panic!("Error at line: {}, Expected ; after module name", self.tokens[self.current].line);
-                    }
-
-                    return Stmt::Module(module_name);
-                } else {
-                    panic!("Error at line: {}, Expected module name", self.tokens[self.current].line);
-                }
-            },
+            TokenKind::Comment => self.comment_block(),
+            TokenKind::Module => self.module_import_stmt(),
              _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
+    }
+
+    fn module_import_stmt(&mut self) -> Stmt {
+        // skipping module keyword token
+        self.current += 1;
+
+        if self.tokens[self.current].kind == TokenKind::Identifier {
+            let module_name = &self.tokens[self.current].lexeme;
+            if module_name.len() == 1 && module_name[0] == '-' {
+                // unnamed module import can cause naming collision in pakhi program
+                self.unnamed_module_import();
+            } else {
+                self.named_module_import(module_name.clone());
+            }
+        } else {
+            panic!("Error at line: {}, Expected a name for imported module", self.tokens[self.current].line)
+        }
+
+        // skipping ; token
+        self.current += 1;
+
+        // Module doesn't generate statement, it only lexes and puts returned tokens to parser's token
+        // queue. Then generates statement from those tokens. That's why self.statements() is called.
+        return self.statements();
+    }
+
+    fn unnamed_module_import(&mut self) {
+
+    }
+
+    fn named_module_import(&mut self, module_name: Vec<char>) {
+
+    }
+
+    fn comment_block(&mut self) -> Stmt {
+        // skipping comment block
+        self.current += 1;
+        // returning next statement
+        return self.statements();
+    }
+
+    fn print_no_newline_stmt(&mut self) -> Stmt {
+        // consuming token
+        self.current += 1;
+        let expr = self.expression();
+        //consuming last ';' of print statement
+        self.current += 1;
+
+        Stmt::PrintNoEOL(expr)
+    }
+
+    fn re_assignment_or_func_call_stmt(&mut self) -> Stmt {
+        // probably array indexing after function call won't work
+        if self.tokens[self.current + 1].kind == TokenKind::ParenStart {
+            // assuming its a function call statement
+            let expr = self.expression();
+
+            return Stmt::Expression(expr);
+        }
+        // if next token is not paren assuming it's a reassignment statement, or expression
+        // statement which ony has identifier
+        self.re_assignment_stmt()
     }
 
     fn assignment_stmt(&mut self) -> Stmt {
