@@ -2,7 +2,7 @@ use crate::frontend::lexer;
 use crate::frontend::lexer::Token;
 use crate::frontend::lexer::TokenKind;
 use crate::common::io;
-use crate::common::io::{RealIO, IO};
+use crate::common::io::IO;
 use std::path::Path;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -159,13 +159,8 @@ impl Parser {
         self.current += 1;
 
         if self.tokens[self.current].kind == TokenKind::Identifier {
-            let module_name = self.tokens[self.current].lexeme.clone();
-            if module_name.len() == 1 && module_name[0] == '_' {
-                // unnamed module import can cause naming collision in pakhi program
-                self.unnamed_module_import();
-            } else {
-                self.named_module_import(module_name);
-            }
+            let module_import_name = self.tokens[self.current].lexeme.clone();
+            self.named_module_import(module_import_name);
         } else {
             panic!("Error at line: {}, Expected a name for imported module", self.tokens[self.current].line)
         }
@@ -178,7 +173,7 @@ impl Parser {
         return self.statements();
     }
 
-    fn unnamed_module_import(&mut self) {
+    fn named_module_import(&mut self, module_import_name: Vec<char>) {
         // skipping module name identifier token and equal token
         self.current += 2;
 
@@ -186,7 +181,7 @@ impl Parser {
         if let TokenKind::String(module_path) = self.tokens[self.current].kind.clone() {
             // skipping module path string token
             self.current += 1;
-            module_tokens = self.get_tokens_from_module(module_path, "");
+            module_tokens = self.get_tokens_from_module(module_path, module_import_name);
         } else {
             panic!("Error at line: {}, Expected module import path", self.tokens[self.current].line);
         }
@@ -200,31 +195,35 @@ impl Parser {
         }
     }
 
-    fn named_module_import(&mut self, module_name: Vec<char>) {
-
-    }
-
-    fn get_tokens_from_module(&self, path: String, prepend: &str) -> Vec<Token> {
+    fn get_tokens_from_module(&self, path: String, prepend: Vec<char>) -> Vec<Token> {
         let module_path = Path::new(path.as_str());
         let current_module_root = Path::new(self.main_module_path.as_str()).parent().unwrap();
         let modules_relative_path_to_current_modules = current_module_root.join(module_path);
         let final_module_path = modules_relative_path_to_current_modules.as_path().to_str().unwrap();
-
-        //println!("{:?}", current_module_root.to_str());
-        //println!("{:?}", module_path.to_str());
-        //println!("{:?}", modules_relative_path_to_current_modules.to_str());
-        //println!("{}", final_module_path);
-        //panic!();
 
         let mut io = io::RealIO::new();
         let src_string = io.read_src_code_from_file(final_module_path);
         match src_string {
             Ok(src) => {
                 let src_chars: Vec<char> = src.chars().collect();
-                let module_tokens = lexer::tokenize(src_chars);
+                let mut module_tokens = lexer::tokenize(src_chars);
+                self.prepend_with_import_name(&mut module_tokens, prepend);
                 return module_tokens;
             },
             Err(e) => panic!("Error opening file: {}", e)
+        }
+    }
+
+    fn prepend_with_import_name(&self, tokens: &mut Vec<Token>, prepend: Vec<char>) {
+        for token in tokens.iter_mut() {
+            if token.kind == TokenKind::Identifier {
+                let mut i = 0;
+                for c in prepend.iter() {
+                    token.lexeme.insert(i, c.clone());
+                    i += 1;
+                }
+                token.lexeme.insert(i, '/');
+            }
         }
     }
 

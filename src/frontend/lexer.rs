@@ -467,7 +467,7 @@ fn consume_identifier(src: &Vec<char>, start: usize, line: u32) -> (Token, usize
 }
 
 fn is_valid_identifier_char(c: char) -> bool {
-    if c == '-' || c == '_' {
+    if c == '-' || c == '_' || c == '/' {
         return true;
     }
     !c.is_ascii_whitespace() && !c.is_ascii_punctuation() && !c.is_ascii_control()

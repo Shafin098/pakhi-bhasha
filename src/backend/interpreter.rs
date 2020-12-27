@@ -1030,7 +1030,7 @@ mod tests {
         let src: String = src_lines.join("\n");
         let src_chars: Vec<char> = src.chars().collect();
         let tokens = lexer::tokenize(src_chars);
-        parser::parse(tokens)
+        parser::parse("".to_string(), tokens)
     }
 
     fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) {
