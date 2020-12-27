@@ -101,7 +101,7 @@ impl IO for MockIO {
         self.op_order.push(String::from("error"));
     }
 
-    fn read_src_code_from_file(&mut self, filename: &str) -> Result<String, Error> {
+    fn read_src_code_from_file(&mut self, _filename: &str) -> Result<String, Error> {
         unimplemented!()
     }
 }
