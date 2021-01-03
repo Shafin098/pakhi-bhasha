@@ -114,7 +114,8 @@ impl Parser {
     fn parse(&mut self) -> Vec<Stmt> {
         let mut statements: Vec<Stmt> = Vec::new();
 
-        while self.tokens[self.current].kind != TokenKind::EOT {
+
+        for _ in 0..self.tokens.len() {
             statements.push(self.statements());
 
             if self.tokens[self.current].kind == TokenKind::Semicolon {
@@ -126,7 +127,6 @@ impl Parser {
                 continue;
             }
         }
-        statements.push(Stmt::EOS);
 
         statements
     }
@@ -149,6 +149,7 @@ impl Parser {
             TokenKind::At => todo!(),
             TokenKind::Comment => self.comment_block(),
             TokenKind::Module => self.module_import_stmt(),
+            TokenKind::EOT => { Stmt::EOS },
              _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
