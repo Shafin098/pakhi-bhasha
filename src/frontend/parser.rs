@@ -4,6 +4,8 @@ use crate::frontend::lexer::TokenKind;
 use crate::common::io;
 use crate::common::io::IO;
 use std::path::Path;
+use std::collections::HashMap;
+use std::ffi::OsStr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
@@ -100,6 +102,7 @@ struct Parser {
     tokens: Vec<Token>,
     current: usize,
     main_module_path: String,
+    child_modules: HashMap<String, Vec<String>>,
 }
 
 impl Parser {
@@ -108,13 +111,21 @@ impl Parser {
             tokens,
             current: 0,
             main_module_path: String::new(),
+            child_modules: HashMap::new(),
         }
     }
 
     fn parse(&mut self) -> Vec<Stmt> {
+        let parent_module_file_name = self.extract_filename(&self.main_module_path);
+        let child_modules_paths = self.extract_all_import_paths(&self.tokens);
+        let child_modules_file_name = self.extract_filenames(&child_modules_paths);
+        let mut new_childs: Vec<String> = Vec::new();
+        for new_child_name in child_modules_file_name {
+            new_childs.push(new_child_name);
+        }
+        self.child_modules.insert(parent_module_file_name.clone(), new_childs);
+
         let mut statements: Vec<Stmt> = Vec::new();
-
-
         for _ in 0..self.tokens.len() {
             statements.push(self.statements());
 
@@ -148,7 +159,7 @@ impl Parser {
             TokenKind::Return => self.return_stmt(),
             TokenKind::At => todo!(),
             TokenKind::Comment => self.comment_block(),
-            TokenKind::Module => self.module_import_stmt(),
+            TokenKind::Import => self.module_import_stmt(),
             TokenKind::EOT => { Stmt::EOS },
              _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
@@ -174,29 +185,57 @@ impl Parser {
         return self.statements();
     }
 
+    // Module could be imported with giving a namespace which was called unnamed_module_import
+    // but unnamed module import feature was removed
+    // that's why this functions name is named_module_import instead of import_module
     fn named_module_import(&mut self, module_import_name: Vec<char>) {
         // skipping module name identifier token and equal token
         self.current += 2;
 
-        let module_tokens;
+        let imported_tokens;
         if let TokenKind::String(module_path) = self.tokens[self.current].kind.clone() {
             // skipping module path string token
             self.current += 1;
-            module_tokens = self.get_tokens_from_module(module_path, module_import_name);
+            imported_tokens = self.get_tokens_from_module(&module_path, module_import_name);
+            let parent_module_file_name = self.extract_filename(&module_path);
+            let child_modules_paths = self.extract_all_import_paths(&imported_tokens);
+            let child_modules_file_name = self.extract_filenames(&child_modules_paths);
+
+            match self.child_modules.get_mut(&*parent_module_file_name) {
+                Some(childs) => {
+                    for new_child_name in child_modules_file_name {
+                        if childs.contains(&new_child_name) {
+                            eprintln!("parent_child: {:#?}", self.child_modules);
+                            panic!("Cyclic module dependency. \
+                                  Can't import {} from {}",parent_module_file_name, new_child_name);
+                        }
+                        childs.push(new_child_name);
+                    }
+                },
+                None => {
+                    let mut new_childs: Vec<String> = Vec::new();
+                    for new_child_name in child_modules_file_name {
+                        new_childs.push(new_child_name);
+                    }
+                    self.child_modules.insert(parent_module_file_name.clone(), new_childs);
+                }
+            }
+
         } else {
             panic!("Error at line: {}, Expected module import path", self.tokens[self.current].line);
         }
 
-        // tokens must be inserted after module import statement
+        // tokens is inserted after whole module import statement
+        // after importing module self.current will point to semicolon of module import statement
         let mut insert_token_at = self.current + 1; // + 1 required to insert after semicolon
-        for token in module_tokens {
+        for token in imported_tokens {
             if token.kind == TokenKind::EOT { continue }
             self.tokens.insert(insert_token_at, token);
             insert_token_at += 1;
         }
     }
 
-    fn get_tokens_from_module(&self, path: String, prepend: Vec<char>) -> Vec<Token> {
+    fn get_tokens_from_module(&self, path: &String, prepend: Vec<char>) -> Vec<Token> {
         let module_path = Path::new(path.as_str());
         let current_module_root = Path::new(self.main_module_path.as_str()).parent().unwrap();
         let modules_relative_path_to_current_modules = current_module_root.join(module_path);
@@ -225,6 +264,50 @@ impl Parser {
                 }
                 token.lexeme.insert(i, '/');
             }
+        }
+    }
+
+    fn extract_filename(&self, path: &String) -> String {
+        let path = Path::new(path);
+        let file_name = OsStr::to_string_lossy(path.file_name().unwrap());
+        file_name.to_string()
+    }
+
+    fn extract_filenames(&self, paths: &Vec<String>) -> Vec<String> {
+        let mut file_names: Vec<String> = Vec::new();
+        for path in paths {
+            file_names.push(self.extract_filename(path));
+        }
+        file_names
+    }
+
+    fn extract_all_import_paths(&self, tokens: &Vec<Token>) -> Vec<String> {
+        let import_stmt_start_token_indexes = self.find_all_imports_start(tokens);
+        let mut modules_paths: Vec<String> = Vec::new();
+        for i in import_stmt_start_token_indexes {
+            modules_paths.push(self.get_module_path_from_import_stmt(tokens, i));
+        }
+        self.extract_filenames(&modules_paths)
+    }
+
+    fn find_all_imports_start(&self, tokens: &Vec<Token>) -> Vec<usize> {
+        let mut all_imports_starting_token_index: Vec<usize> = Vec::new();
+        for (i, t) in tokens.iter().enumerate() {
+            if t.kind == TokenKind::Import {
+                all_imports_starting_token_index.push(i)
+            }
+        }
+        all_imports_starting_token_index
+    }
+
+    fn get_module_path_from_import_stmt(&self, tokens: &Vec<Token>,
+                                        import_stmt_start_index: usize) -> String
+    {
+        let import_path_offset = 3;
+        match tokens[import_stmt_start_index + import_path_offset].kind.clone() {
+            TokenKind::String(import_path) => self.extract_filename(&import_path),
+            _ => panic!("Error at line: {} import path is not valid",
+                        tokens[import_stmt_start_index + import_path_offset].line),
         }
     }
 
