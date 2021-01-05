@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use crate::frontend::parser;
-use crate::frontend::lexer::Token;
-use crate::frontend::lexer::TokenKind;
 use crate::common::io::{IO, RealIO};
+use crate::frontend::parser;
+use crate::frontend::lexer::{TokenKind, Token};
+
 
 enum Index {
     List(usize),

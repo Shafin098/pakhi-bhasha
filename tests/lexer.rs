@@ -1,4 +1,4 @@
-use pakhi::lexer::{TokenKind, tokenize};
+use pakhi::frontend::lexer::{tokenize, TokenKind};
 
 #[test]
 fn lexer_var_declare() {

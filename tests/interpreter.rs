@@ -1,13 +1,13 @@
-use pakhi::parser::Stmt;
-use pakhi::{lexer, parser};
+use pakhi::frontend::{lexer, parser};
+use pakhi::frontend::parser::Stmt;
 use pakhi::common::io::{MockIO, IO};
-use pakhi::interpreter::Interpreter;
+use pakhi::backend::interpreter::Interpreter;
 
 fn src_to_ast(src_lines: Vec<&str>) -> Vec<Stmt> {
     let src: String = src_lines.join("\n");
     let src_chars: Vec<char> = src.chars().collect();
     let tokens = lexer::tokenize(src_chars);
-    parser::parse("".to_string(), tokens)
+    parser::parse("test.pakhi".to_string(), tokens)
 }
 
 fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) {
