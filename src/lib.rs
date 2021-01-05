@@ -4,12 +4,10 @@ pub mod common;
 
 use crate::frontend::{lexer, parser};
 use crate::backend::interpreter;
-use crate::common::io;
 use crate::common::io::IO;
 
-pub fn start_pakhi(main_module_path: String) {
+pub fn start_pakhi<T: IO>(main_module_path: String, io: &mut T) {
     //println!("Source file: {}", filename);
-    let mut io = io::RealIO::new();
     match io.read_src_code_from_file(&main_module_path) {
         Ok(src_string) => {
             // println!("{}", src_string);
