@@ -194,8 +194,13 @@ impl Parser {
 
         let imported_tokens;
         if let TokenKind::String(module_path) = self.tokens[self.current].kind.clone() {
+            // checking if importing file with .pakhi
+            if !module_path.ends_with(".pakhi") {
+                panic!("Error at line: {} not a valid module file name", self.tokens[self.current].line);
+            }
             // skipping module path string token
             self.current += 1;
+
             imported_tokens = self.get_tokens_from_module(&module_path, module_import_name);
             let parent_module_file_name = self.extract_filename(&module_path);
             let child_modules_paths = self.extract_all_import_paths(&imported_tokens);
@@ -250,7 +255,7 @@ impl Parser {
                 self.prepend_with_import_name(&mut module_tokens, prepend);
                 return module_tokens;
             },
-            Err(e) => panic!("Error opening file: {}", e)
+            Err(e) => panic!("Error opening file {}. Err: {}", final_module_path, e),
         }
     }
 
