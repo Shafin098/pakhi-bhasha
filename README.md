@@ -71,8 +71,8 @@ _দেখাও "ফলাফল = ";
 ```
 #### Importing modules
 Every pakhi source file is a module. Module can be imported with realtive path or absolute path.<br>
-Module import syntax: ```মডিউল মডিউল-নাম = "মডিউল-পাথ";```<br>
-Module use syntax: ```মডিউল-নাম/মডিউলের-ফাংশন();```
+*Module import syntax: ```মডিউল মডিউল-নাম = "মডিউল-পাথ";```*<br>
+*Module use syntax: ```মডিউল-নাম/মডিউলের-ফাংশন();```*
 ```
 # এটা হচ্ছে রুট মডিউল ফাইল: main.pakhi #
 মডিউল ম্যাথ = "math.pakhi";
