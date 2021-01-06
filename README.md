@@ -124,6 +124,25 @@ _লিস্ট-পপ(লিস্ট);
 _লিস্ট-পপ(লিস্ট, ১);
 দেখাও লিস্ট;
 ```
+#### Importing modules
+Every pakhi source file is a module. Module can be imported with realtive path or absolute path.
+Module import syntax: ```মডিউল মডিউল-নাম = "মডিউল-পাথ";```
+```
+# এইটা হচ্ছে রুট মডিউল ফাইল #
+মডিউল ম্যাথ = "math.pakhi";
+নাম বাহু = ৩;
+নাম ক্ষেত্রফল = ম্যাথ/বর্গ(বাহু);
+দেখাও ক্ষেত্রফল;
+```
+```
+# 
+এইটা হচ্ছে ম্যাথ মডিউল ফাইল।
+রুট মডিউল এই ফাইল এর বর্গ ফাংশনকে ইম্পোর্ট করেছে। 
+#
+ফাং বর্গ(সংখ্যা) {
+    ফেরত সংখ্যা * সংখ্যা;
+} ফেরত;
+```
 ## How to get pakhi on my computer?
 * Download only [pakhi-setup.exe](https://github.com/Shafin098/pakhi-bhasha/releases) from Assets
 * Complete setup
