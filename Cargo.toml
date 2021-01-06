@@ -4,4 +4,6 @@ version = "0.7.0"
 authors = ["Shafin Ashraf"]
 edition = "2018"
 
+[dev-dependencies]
+serial_test = "0.5.1"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

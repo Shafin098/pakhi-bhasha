@@ -210,7 +210,6 @@ impl Parser {
                 Some(childs) => {
                     for new_child_name in child_modules_file_name {
                         if childs.contains(&new_child_name) {
-                            eprintln!("parent_child: {:#?}", self.child_modules);
                             panic!("Cyclic module dependency. \
                                   Can't import {} from {}",parent_module_file_name, new_child_name);
                         }
