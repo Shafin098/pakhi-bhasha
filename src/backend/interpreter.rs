@@ -722,6 +722,31 @@ impl<T: IO> Interpreter<'_, T> {
         }
     }
 
+    fn built_in_fn_string_split(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 2 {
+            let string = self.interpret_expr(f.arguments[0].clone());
+            let split_by = self.interpret_expr(f.arguments[1].clone());
+            match (string, split_by) {
+                (DataType::String(string), DataType::String(split_by)) => {
+                    let mut splitted_string: Vec<&str> = string.split(&split_by).collect();
+                    // For some reason split with "" causes splits to have "" at benginning and end
+                    // Thats why removes character at start finish
+                    if splitted_string[0] == "" && splitted_string[splitted_string.len() - 1] == "" {
+                        splitted_string.remove(0);
+                        splitted_string.remove(splitted_string.len() - 1);
+                    }
+                    let splitted_string: Vec<DataType> = splitted_string.iter()
+                                                .map(|s| DataType::String(String::from(s.clone()))).collect();
+                    self.lists.push(splitted_string);
+                    return DataType::List(self.lists.len() - 1);
+                },
+                _ => panic!("_স্ট্রিং-স্প্লিট() functions arguments must be string"),
+            }
+        } else {
+            panic!("_স্ট্রিং-স্প্লিট() function expects two argument");
+        }
+    }
+
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
         let env_count_before_fn_call = self.envs.len();
 
@@ -740,6 +765,8 @@ impl<T: IO> Interpreter<'_, T> {
                 } else if func_name == "_এরর".chars().collect::<Vec<char>>(){
                     let error = self.built_in_fn_error(&f);
                     panic!("{}", error);
+                } else if  func_name == "_স্ট্রিং-স্প্লিট".chars().collect::<Vec<char>>() {
+                    return self.built_in_fn_string_split(&f);
                 } else {
                     // assumes function was user-defined function
                     // this block checks if function was declared,
