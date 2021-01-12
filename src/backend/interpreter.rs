@@ -708,7 +708,18 @@ impl<T: IO> Interpreter<'_, T> {
                 Err(e) => panic!("{}", e),
             }
         } else { panic!("Function requires zero argument") }
+    }
 
+    fn built_in_fn_error(&mut self, f: &parser::FunctionCall) -> String {
+        if f.arguments.len() == 1 {
+            let error = self.interpret_expr(f.arguments[0].clone());
+            match error {
+                DataType::String(err_message) => err_message,
+                _ => panic!("_এরর() functions arguments must be string"),
+            }
+        } else {
+            panic!("_এরর() function expects one argument");
+        }
     }
 
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
@@ -726,6 +737,9 @@ impl<T: IO> Interpreter<'_, T> {
                     return self.built_in_fn_list_pop(&f);
                 } else if func_name == "_রিড-লাইন".chars().collect::<Vec<char>>() {
                     return self.built_in_fn_read_line(&f);
+                } else if func_name == "_এরর".chars().collect::<Vec<char>>(){
+                    let error = self.built_in_fn_error(&f);
+                    panic!("{}", error);
                 } else {
                     // assumes function was user-defined function
                     // this block checks if function was declared,

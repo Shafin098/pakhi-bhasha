@@ -28,6 +28,7 @@ impl IO for RealIO {
 
     fn error(&mut self, m: &str) {
         eprintln!("{}", m);
+        panic!();
     }
 }
 

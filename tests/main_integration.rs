@@ -45,7 +45,7 @@ fn module_import() {
 
 #[test]
 #[serial]
-#[should_panic(expected = "Cyclic module dependency. Can't import root.pakhi from module.pakhi")]
+#[should_panic(expected="Cyclic module dependency. Can't import root.pakhi from module.pakhi")]
 fn module_import_cyclic() {
     create_file("root.pakhi", vec![
         r#"মডিউল ম = "module.pakhi";"#,
