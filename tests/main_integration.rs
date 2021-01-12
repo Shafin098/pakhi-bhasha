@@ -15,8 +15,8 @@ fn run_module(module_name: &str, mut io: MockIO) {
     let root_path = std::env::current_dir().unwrap().join("tmp");
     let module_path = root_path.join(module_name);
     pakhi::start_pakhi(module_path.to_str().unwrap().parse().unwrap(), &mut io);
-    io.assert_all_true();
     clean_test_tmp_dir();
+    io.assert_all_true();
 }
 
 fn clean_test_tmp_dir() {
