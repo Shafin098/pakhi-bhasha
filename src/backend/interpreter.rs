@@ -271,7 +271,7 @@ impl<T: IO> Interpreter<'_, T> {
             _ => {
                 let env_i = self.envs.len() - 1;
                 let current_env = &mut self.envs[env_i];
-                current_env.insert(var_key, None);
+                current_env.insert(var_key, Some(DataType::Nil));
             },
         }
     }
@@ -770,6 +770,23 @@ impl<T: IO> Interpreter<'_, T> {
         }
     }
 
+    fn built_in_fn_type(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 1 {
+            let data = self.interpret_expr(f.arguments[0].clone());
+            match data {
+                DataType::Num(_) => DataType::String(String::from("_সংখ্যা")),
+                DataType::Bool(_) => DataType::String(String::from("_বুলিয়ান")),
+                DataType::String(_) => DataType::String(String::from("_স্ট্রিং")),
+                DataType::List(_) => DataType::String(String::from("_লিস্ট")),
+                DataType::NamelessRecord(_) => DataType::String(String::from("_রেকর্ড")),
+                DataType::Function(_) => DataType::String(String::from("_ফাং")),
+                DataType::Nil => DataType::String(String::from("_শূন্য")),
+            }
+        } else {
+            panic!("_টাইপ() function expects one argument");
+        }
+    }
+
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
         let env_count_before_fn_call = self.envs.len();
 
@@ -792,6 +809,8 @@ impl<T: IO> Interpreter<'_, T> {
                     return self.built_in_fn_string_split(&f);
                 } else if  func_name == "_স্ট্রিং-জয়েন".chars().collect::<Vec<char>>() {
                     return self.built_in_fn_string_join(&f);
+                } else if  func_name == "_টাইপ".chars().collect::<Vec<char>>() {
+                    return self.built_in_fn_type(&f);
                 } else {
                     // assumes function was user-defined function
                     // this block checks if function was declared,

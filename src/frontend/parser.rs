@@ -354,9 +354,8 @@ impl Parser {
 
         let var_name = self.tokens[self.current].clone();
 
-        // consuming identifier and '=' token
-        self.current += 2;
-
+        // consuming identifier token
+        self.current += 1;
         let stmt;
         if self.tokens[self.current].kind == TokenKind::Semicolon {
             // no value provided to initialize variable
@@ -367,6 +366,9 @@ impl Parser {
                 init_value: None,
             });
         } else {
+            // consuming '=' token
+            self.current += 1;
+
             let expr = self.expression();
             // init value provided for assigning to variable
             stmt = Stmt::Assignment(Assignment {

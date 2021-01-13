@@ -13,7 +13,7 @@ fn src_to_ast(src_lines: Vec<&str>) -> Vec<Stmt> {
 fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) {
     let mut interpreter = Interpreter::new(ast, &mut mock_io);
     interpreter.run();
-    assert!(mock_io.assert_all_true());
+    mock_io.assert_all_true();
 }
 
 #[test]
@@ -377,5 +377,30 @@ fn built_in_fn_string_join() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("স্ট্রিং-স্প্লিট");
+    run_assert_all_true(ast, mock_io);
+}
+
+#[test]
+fn built_in_fn_type() {
+    let ast = src_to_ast(vec![
+        r#"দেখাও _টাইপ(১);"#,
+        r#"দেখাও _টাইপ(মিথ্যা);"#,
+        r#"দেখাও _টাইপ("১");"#,
+        r#"দেখাও _টাইপ([১]);"#,
+        r#"দেখাও _টাইপ(@{"১" -> ১,});"#,
+        r#"নাম ক;"#,
+        r#"দেখাও _টাইপ(ক);"#,
+        r#"ফাং খ() {"#,
+        r#"} ফেরত;"#,
+        r#"দেখাও _টাইপ(খ);"#,
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("_সংখ্যা");
+    mock_io.expect_println("_বুলিয়ান");
+    mock_io.expect_println("_স্ট্রিং");
+    mock_io.expect_println("_লিস্ট");
+    mock_io.expect_println("_রেকর্ড");
+    mock_io.expect_println("_শূন্য");
+    mock_io.expect_println("_ফাং");
     run_assert_all_true(ast, mock_io);
 }

@@ -60,12 +60,19 @@ impl MockIO {
         self.expected_op_order.push(String::from("error"));
     }
 
-    pub fn assert_all_true(&self) -> bool {
-        //println!("{:#?}", self);
-        self.expected_print.eq(&self.print) &&
-        self.expected_println.eq(&self.println) &&
-        self.expected_error.eq(&self.expected_error) &&
-        self.expected_op_order.eq(&self.op_order)
+    pub fn assert_all_true(&self) {
+        for (i, _)in self.print.iter().enumerate() {
+            assert_eq!(self.expected_print[i], self.print[i])
+        }
+        for (i, _)in self.println.iter().enumerate() {
+            assert_eq!(self.expected_println[i], self.println[i])
+        }
+        for (i, _)in self.error.iter().enumerate() {
+            assert_eq!(self.expected_error[i], self.error[i])
+        }
+        for (i, _)in self.op_order.iter().enumerate() {
+            assert_eq!(self.expected_op_order[i], self.op_order[i])
+        }
     }
 }
 
