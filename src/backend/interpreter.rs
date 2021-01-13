@@ -747,6 +747,29 @@ impl<T: IO> Interpreter<'_, T> {
         }
     }
 
+    fn built_in_fn_string_join(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 2 {
+            let list_of_strings = self.interpret_expr(f.arguments[0].clone());
+            let join_by = self.interpret_expr(f.arguments[1].clone());
+            match (list_of_strings, join_by) {
+                (DataType::List(list_index), DataType::String(join_by)) => {
+                    let string_list = self.lists.get(list_index).unwrap();
+                    let mut strings: Vec<String> = Vec::new();
+                    for string in string_list {
+                        if let DataType::String(string) = string.clone() {
+                            strings.push(string);
+                        } else { panic!("_স্ট্রিং-জয়েন() functions only accepts list of strings"); }
+                    }
+                    let joined_string = strings.join(&join_by);
+                    return DataType::String(joined_string);
+                },
+                _ => panic!("_স্ট্রিং-জয়েন() functions arguments must be list and string"),
+            }
+        } else {
+            panic!("_স্ট্রিং-জয়েন() function expects two argument");
+        }
+    }
+
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
         let env_count_before_fn_call = self.envs.len();
 
@@ -767,6 +790,8 @@ impl<T: IO> Interpreter<'_, T> {
                     panic!("{}", error);
                 } else if  func_name == "_স্ট্রিং-স্প্লিট".chars().collect::<Vec<char>>() {
                     return self.built_in_fn_string_split(&f);
+                } else if  func_name == "_স্ট্রিং-জয়েন".chars().collect::<Vec<char>>() {
+                    return self.built_in_fn_string_join(&f);
                 } else {
                     // assumes function was user-defined function
                     // this block checks if function was declared,

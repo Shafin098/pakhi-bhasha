@@ -368,3 +368,14 @@ fn built_in_fn_string_split() {
     mock_io.expect_println("স্প্লিট");
     run_assert_all_true(ast, mock_io);
 }
+
+#[test]
+fn built_in_fn_string_join() {
+    let ast = src_to_ast(vec![
+        r#"নাম স্প্লিট = ["স্ট্রিং", "স্প্লিট"];"#,
+        r#"দেখাও _স্ট্রিং-জয়েন(স্প্লিট, "-");"#,
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("স্ট্রিং-স্প্লিট");
+    run_assert_all_true(ast, mock_io);
+}
