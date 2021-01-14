@@ -129,6 +129,9 @@ impl Parser {
         for _ in 0..self.tokens.len() {
             statements.push(self.statements());
 
+            if self.current > self.tokens.len() - 1 {
+                panic!("Error at last line, Expected a ';'");
+            }
             if self.tokens[self.current].kind == TokenKind::Semicolon {
                 // useful semicolon should be consumed by self.statements()
                 // if not consumed assuming not useful semicolon
@@ -380,7 +383,8 @@ impl Parser {
         }
 
         if self.tokens[self.current].kind != TokenKind::Semicolon {
-            panic!("Error at line: {}\nExpected a ;", self.tokens[self.current].line);
+            // newline was consumed, os actual error was at previous line
+            panic!("Error at line: {}\nExpected ';'", self.tokens[self.current].line - 1);
         }
         // consuming ; token
         self.current += 1;
