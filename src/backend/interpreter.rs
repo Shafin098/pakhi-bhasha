@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::common::io::{IO, RealIO};
 use crate::frontend::parser;
 use crate::frontend::lexer::{TokenKind, Token};
-
+use std::path::Path;
 
 enum Index {
     List(usize),
@@ -787,6 +787,28 @@ impl<T: IO> Interpreter<'_, T> {
         }
     }
 
+    fn built_in_fn_read_file(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 1 {
+            let path_data = self.interpret_expr(f.arguments[0].clone());
+            match path_data {
+                DataType::String(p) => {
+                    let path = Path::new(&p);
+                    if path.is_relative() {
+                        panic!("Cannot read file with relative file")
+                    }
+                    let read_result = std::fs::read_to_string(path);
+                    match read_result {
+                        Ok(content) => DataType::String(content),
+                        Err(e) => panic!("{}", e.to_string()),
+                    }
+                },
+                _ => panic!("_রিড-ফাইল() function path argument must be of type string"),
+            }
+        } else {
+            panic!("_রিড-ফাইল() function expects one argument");
+        }
+    }
+
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> DataType {
         let env_count_before_fn_call = self.envs.len();
 
@@ -811,6 +833,8 @@ impl<T: IO> Interpreter<'_, T> {
                     return self.built_in_fn_string_join(&f);
                 } else if  func_name == "_টাইপ".chars().collect::<Vec<char>>() {
                     return self.built_in_fn_type(&f);
+                } else if  func_name == "_রিড-ফাইল".chars().collect::<Vec<char>>() {
+                    return self.built_in_fn_read_file(&f);
                 } else {
                     // assumes function was user-defined function
                     // this block checks if function was declared,
