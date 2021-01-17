@@ -151,7 +151,7 @@ impl<T: IO> Interpreter<'_, T> {
         match self.interpret_expr(expr) {
             DataType::Num(n) => self.io.print( self.to_bn_num(n).as_str()),
             DataType::Bool(b) => self.io.print( self.to_bn_bool(b).as_str()),
-            DataType::String(s) => self.io.print(format!("\"{}\"", s).as_str()),
+            DataType::String(s) => self.io.print(s.as_str()),
             DataType::List(arr_i) => {
                 let mut elems: Vec<(usize, DataType)>  = Vec::new();
                 for (i, elem) in self.lists[arr_i].iter().enumerate() {
