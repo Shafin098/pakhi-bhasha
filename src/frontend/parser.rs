@@ -201,43 +201,59 @@ impl Parser {
         // skipping module name identifier token and equal token
         self.current += 2;
 
-        let imported_tokens;
-        if let TokenKind::String(module_path) = self.tokens[self.current].kind.clone() {
-            // checking if importing file with .pakhi
-            if !module_path.ends_with(".pakhi") {
-                panic!("Error at line: {} not a valid module file name", self.tokens[self.current].line);
-            }
-            // skipping module path string token
-            self.current += 1;
+        let module_path = match  self.tokens[self.current].kind {
+            TokenKind::String(ref path) => {
+                let mut concated_module_path = Path::new(path).to_path_buf();
+                self.current += 1;
 
-            imported_tokens = self.get_tokens_from_module(&module_path, module_import_name);
-            let parent_module_file_name = self.extract_filename(&module_path);
-            let child_modules_paths = self.extract_all_import_paths(&imported_tokens);
-            let child_modules_file_name = self.extract_filenames(&child_modules_paths);
-
-            // Checking for cyclic module dependency
-            // and figuring out who is parent of which modules
-            match self.parent_child_relationship.get_mut(&*parent_module_file_name) {
-                Some(childs) => {
-                    for new_child_name in child_modules_file_name {
-                        if childs.contains(&new_child_name) {
-                            panic!("Cyclic module dependency. \
-                                  Can't import {} from {}",parent_module_file_name, new_child_name);
-                        }
-                        childs.push(new_child_name);
+                while self.tokens[self.current].kind != TokenKind::Semicolon {
+                    match self.tokens[self.current].kind {
+                        TokenKind::String(ref p) => {
+                            let rest_of_the_path = Path::new(p);
+                            concated_module_path = concated_module_path.join(rest_of_the_path);
+                            self.current += 1;
+                        },
+                        TokenKind::Plus => {
+                            self.current += 1;
+                        },
+                        _ => panic!("Error at line: {}, Module path must be static string literal")
                     }
-                },
-                None => {
-                    let mut new_childs: Vec<String> = Vec::new();
-                    for new_child_name in child_modules_file_name {
-                        new_childs.push(new_child_name);
-                    }
-                    self.parent_child_relationship.insert(parent_module_file_name.clone(), new_childs);
                 }
-            }
 
-        } else {
-            panic!("Error at line: {}, Expected module import path", self.tokens[self.current].line);
+                concated_module_path.to_str().unwrap().to_string()
+            },
+            _ => panic!("Error at line: {}, Module path must be static string literal"),
+        };
+
+
+        // checking if importing file with .pakhi
+        if !module_path.ends_with(".pakhi") {
+            panic!("Error at line: {} not a valid module file name", self.tokens[self.current].line);
+        }
+        let imported_tokens = self.get_tokens_from_module(&module_path, module_import_name);
+        let parent_module_file_name = self.extract_filename(&module_path);
+        let child_modules_paths = self.extract_all_import_paths(&imported_tokens);
+        let child_modules_file_name = self.extract_filenames(&child_modules_paths);
+
+        // Checking for cyclic module dependency
+        // and figuring out who is parent of which modules
+        match self.parent_child_relationship.get_mut(&*parent_module_file_name) {
+            Some(childs) => {
+                for new_child_name in child_modules_file_name {
+                    if childs.contains(&new_child_name) {
+                        panic!("Cyclic module dependency. \
+                                  Can't import {} from {}",parent_module_file_name, new_child_name);
+                    }
+                    childs.push(new_child_name);
+                }
+            },
+            None => {
+                let mut new_childs: Vec<String> = Vec::new();
+                for new_child_name in child_modules_file_name {
+                    new_childs.push(new_child_name);
+                }
+                self.parent_child_relationship.insert(parent_module_file_name.clone(), new_childs);
+            }
         }
 
         // tokens is inserted after whole module import statement
