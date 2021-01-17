@@ -102,7 +102,10 @@ struct Parser {
     tokens: Vec<Token>,
     current: usize,
     main_module_path: String,
-    child_modules: HashMap<String, Vec<String>>,
+    // Stores all imported child modules names for every parent module
+    // key: Parent module name
+    // value: Every imported child modules name
+    parent_child_relationship: HashMap<String, Vec<String>>,
 }
 
 impl Parser {
@@ -111,11 +114,12 @@ impl Parser {
             tokens,
             current: 0,
             main_module_path: String::new(),
-            child_modules: HashMap::new(),
+            parent_child_relationship: HashMap::new(),
         }
     }
 
     fn parse(&mut self) -> Vec<Stmt> {
+        // Figuring out which modules are direct child of root module
         let parent_module_file_name = self.extract_filename(&self.main_module_path);
         let child_modules_paths = self.extract_all_import_paths(&self.tokens);
         let child_modules_file_name = self.extract_filenames(&child_modules_paths);
@@ -123,7 +127,9 @@ impl Parser {
         for new_child_name in child_modules_file_name {
             new_childs.push(new_child_name);
         }
-        self.child_modules.insert(parent_module_file_name.clone(), new_childs);
+        self.parent_child_relationship.insert(parent_module_file_name.clone(), new_childs);
+
+        self.expand_dirname_constant_for_root_module();
 
         let mut statements: Vec<Stmt> = Vec::new();
         for _ in 0..self.tokens.len() {
@@ -209,7 +215,9 @@ impl Parser {
             let child_modules_paths = self.extract_all_import_paths(&imported_tokens);
             let child_modules_file_name = self.extract_filenames(&child_modules_paths);
 
-            match self.child_modules.get_mut(&*parent_module_file_name) {
+            // Checking for cyclic module dependency
+            // and figuring out who is parent of which modules
+            match self.parent_child_relationship.get_mut(&*parent_module_file_name) {
                 Some(childs) => {
                     for new_child_name in child_modules_file_name {
                         if childs.contains(&new_child_name) {
@@ -224,7 +232,7 @@ impl Parser {
                     for new_child_name in child_modules_file_name {
                         new_childs.push(new_child_name);
                     }
-                    self.child_modules.insert(parent_module_file_name.clone(), new_childs);
+                    self.parent_child_relationship.insert(parent_module_file_name.clone(), new_childs);
                 }
             }
 
@@ -254,11 +262,73 @@ impl Parser {
             Ok(src) => {
                 let src_chars: Vec<char> = src.chars().collect();
                 let mut module_tokens = lexer::tokenize(src_chars);
+                // Must call this function before prepend
+                self.expand_dirname_constant(&mut module_tokens, final_module_path);
                 self.prepend_with_import_name(&mut module_tokens, prepend);
                 return module_tokens;
             },
             Err(e) => panic!("Error opening file {}. Err: {}", final_module_path, e),
         }
+    }
+
+    // Must call this function before prepend or without prepend
+    // Dynamically replace _ডাইরেক্টরি identifier token with String token that
+    // contains actual directory path String
+    fn expand_dirname_constant(&self, tokens: &mut Vec<Token>, module_file_location: &str) {
+        let mut tokens_to_mutate_index: Vec<usize> = Vec::new();
+
+        for (i, token) in tokens.iter().enumerate() {
+            if token.kind == TokenKind::Identifier && self.is_dirname_constant(&token.lexeme) {
+                tokens_to_mutate_index.push(i);
+            }
+        }
+
+        let modules_src_file_location= Path::new(module_file_location);
+
+        for i in tokens_to_mutate_index {
+            if modules_src_file_location.is_relative() {
+                let  absolute_path = std::env::current_dir().unwrap().join(&modules_src_file_location);
+                let module_src_file_dir = absolute_path.parent().unwrap().to_str().unwrap();
+                tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
+                tokens[i].lexeme = module_src_file_dir.chars().collect();
+            } else {
+                let module_src_file_dir = modules_src_file_location.parent().unwrap().to_str().unwrap();
+                tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
+                tokens[i].lexeme = module_src_file_dir.chars().collect();
+            }
+        }
+    }
+
+    fn expand_dirname_constant_for_root_module(&mut self) {
+        let mut tokens_to_mutate_index: Vec<usize> = Vec::new();
+
+        for (i, token) in self.tokens.iter().enumerate() {
+            if token.kind == TokenKind::Identifier && self.is_dirname_constant(&token.lexeme) {
+                tokens_to_mutate_index.push(i);
+            }
+        }
+
+        let modules_src_file_location= Path::new(&self.main_module_path);
+
+        for i in tokens_to_mutate_index {
+            if modules_src_file_location.is_relative() {
+                let  absolute_path = std::env::current_dir().unwrap().join(&modules_src_file_location);
+                let module_src_file_dir = absolute_path.parent().unwrap().to_str().unwrap();
+                self.tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
+                self.tokens[i].lexeme = module_src_file_dir.chars().collect();
+            } else {
+                let module_src_file_dir = modules_src_file_location.parent().unwrap().to_str().unwrap();
+                self.tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
+                self.tokens[i].lexeme = module_src_file_dir.chars().collect();
+            }
+        }
+    }
+
+    fn is_dirname_constant(&self, lexeme: &Vec<char>) -> bool {
+        let var_name: String = lexeme.iter().collect();
+        if var_name  == "_ডাইরেক্টরি".to_string() {
+            true
+        } else { false }
     }
 
     fn prepend_with_import_name(&self, tokens: &mut Vec<Token>, prepend: Vec<char>) {
