@@ -3,6 +3,7 @@ use crate::common::io::{IO, RealIO};
 use crate::frontend::parser;
 use crate::frontend::lexer::{TokenKind, Token};
 use std::path::Path;
+use crate::common::built_ins::BuiltInFunctionList;
 
 enum Index {
     List(usize),
@@ -45,6 +46,9 @@ pub struct Interpreter<'a, T: IO> {
     lists: Vec<Vec<DataType>>,
     nameless_records: Vec<HashMap<String, DataType>>,
     io: &'a mut T,
+    // Storing all built-in function names because when modules identifiers are renamed
+    // we don't want to rename built-in functions
+    built_in_functions: BuiltInFunctionList,
 }
 
 impl<T: IO> Interpreter<'_, T> {
@@ -59,6 +63,7 @@ impl<T: IO> Interpreter<'_, T> {
             lists: Vec::new(),
             nameless_records: Vec::new(),
             io,
+            built_in_functions: BuiltInFunctionList::new(),
         }
     }
 
@@ -814,29 +819,28 @@ impl<T: IO> Interpreter<'_, T> {
 
         match *f.expr.clone() {
             parser::Expr::Primary(parser::Primary::Var(func_token)) => {
-                // if any of the if condition equals true its a built in function
-                // user defined  functions ar handled in else clause
-                let func_name = func_token.lexeme.clone();
+                //  Checking if function is built-in
+                if self.built_in_functions.is_built_in(&func_token.lexeme) {
+                    // Function is definitely built-in
 
-                if func_name == "_লিস্ট-পুশ".chars().collect::<Vec<char>>() {
-                    return self.built_in_fn_list_push(&f);
-                } else if func_name == "_লিস্ট-পপ".chars().collect::<Vec<char>>(){
-                    return self.built_in_fn_list_pop(&f);
-                } else if func_name == "_রিড-লাইন".chars().collect::<Vec<char>>() {
-                    return self.built_in_fn_read_line(&f);
-                } else if func_name == "_এরর".chars().collect::<Vec<char>>(){
-                    let error = self.built_in_fn_error(&f);
-                    panic!("{}", error);
-                } else if  func_name == "_স্ট্রিং-স্প্লিট".chars().collect::<Vec<char>>() {
-                    return self.built_in_fn_string_split(&f);
-                } else if  func_name == "_স্ট্রিং-জয়েন".chars().collect::<Vec<char>>() {
-                    return self.built_in_fn_string_join(&f);
-                } else if  func_name == "_টাইপ".chars().collect::<Vec<char>>() {
-                    return self.built_in_fn_type(&f);
-                } else if  func_name == "_রিড-ফাইল".chars().collect::<Vec<char>>() {
-                    return self.built_in_fn_read_file(&f);
+                    // Finding out which built-in function and executing that accordingly
+                    match self.built_in_functions.get_name(&func_token.lexeme).as_str() {
+                        "_লিস্ট-পুশ" => { return self.built_in_fn_list_push(&f); },
+                        "_লিস্ট-পপ" => { return self.built_in_fn_list_pop(&f); },
+                        "_রিড-লাইন" => { return self.built_in_fn_read_line(&f); },
+                        "_এরর" => {
+                            let error = self.built_in_fn_error(&f);
+                            panic!("{}", error);
+                        },
+                        "_স্ট্রিং-স্প্লিট" => { return self.built_in_fn_string_split(&f); },
+                        "_স্ট্রিং-জয়েন" => { return self.built_in_fn_string_join(&f); },
+                        "_টাইপ" => { return self.built_in_fn_type(&f); },
+                        "_রিড-ফাইল" => { return self.built_in_fn_read_file(&f); },
+                        _ => {},
+                    }
                 } else {
-                    // assumes function was user-defined function
+                    // Functions is definitely user-defined and not built-in
+
                     // this block checks if function was declared,
                     // sets up environment, inserts args to new environment
                     // and saves return address for function call
@@ -854,7 +858,9 @@ impl<T: IO> Interpreter<'_, T> {
                         }
 
                         // root key indicates its a functions root env
-                        root_env.insert("root".to_string(), Some(DataType::Nil));
+                        // using 1root as variable name so that user cant accidentally declare 1root
+                        // because using number before variable name was not allowed in grammar rule
+                        root_env.insert("1root".to_string(), Some(DataType::Nil));
 
                         // creating root_envs
                         self.envs.push(root_env);
@@ -1082,7 +1088,7 @@ impl<T: IO> Interpreter<'_, T> {
             }
 
             // if contains root means at current env is root of the function
-            if env.contains_key("root") {
+            if env.contains_key("1root") {
                 break;
             }
         }

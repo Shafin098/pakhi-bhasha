@@ -6,6 +6,7 @@ use crate::common::io::IO;
 use std::path::Path;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use crate::common::built_ins::BuiltInFunctionList;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
@@ -106,6 +107,9 @@ struct Parser {
     // key: Parent module name
     // value: Every imported child modules name
     parent_child_relationship: HashMap<String, Vec<String>>,
+    // Storing all built-in function names because when modules identifiers are renamed
+    // we don't want to rename built-in functions
+    built_in_functions: BuiltInFunctionList,
 }
 
 impl Parser {
@@ -115,6 +119,7 @@ impl Parser {
             current: 0,
             main_module_path: String::new(),
             parent_child_relationship: HashMap::new(),
+            built_in_functions: BuiltInFunctionList::new(),
         }
     }
 
@@ -302,16 +307,19 @@ impl Parser {
         let modules_src_file_location= Path::new(module_file_location);
 
         for i in tokens_to_mutate_index {
+            let mut module_src_file_dir;
             if modules_src_file_location.is_relative() {
                 let  absolute_path = std::env::current_dir().unwrap().join(&modules_src_file_location);
-                let module_src_file_dir = absolute_path.parent().unwrap().to_str().unwrap();
-                tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
-                tokens[i].lexeme = module_src_file_dir.chars().collect();
+                module_src_file_dir = absolute_path.parent().unwrap().to_str().unwrap().to_string();
             } else {
-                let module_src_file_dir = modules_src_file_location.parent().unwrap().to_str().unwrap();
-                tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
-                tokens[i].lexeme = module_src_file_dir.chars().collect();
+                module_src_file_dir = modules_src_file_location.parent().unwrap().to_str().unwrap().to_string();
             }
+
+            if !module_src_file_dir.ends_with("/") || !module_src_file_dir.ends_with("/") {
+                module_src_file_dir.push_str("/");
+            }
+            tokens[i].kind = TokenKind::String(module_src_file_dir.clone());
+            tokens[i].lexeme = module_src_file_dir.chars().collect();
         }
     }
 
@@ -327,16 +335,19 @@ impl Parser {
         let modules_src_file_location= Path::new(&self.main_module_path);
 
         for i in tokens_to_mutate_index {
+            let mut module_src_file_dir;
             if modules_src_file_location.is_relative() {
                 let  absolute_path = std::env::current_dir().unwrap().join(&modules_src_file_location);
-                let module_src_file_dir = absolute_path.parent().unwrap().to_str().unwrap();
-                self.tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
-                self.tokens[i].lexeme = module_src_file_dir.chars().collect();
+                module_src_file_dir = absolute_path.parent().unwrap().to_str().unwrap().to_string();
             } else {
-                let module_src_file_dir = modules_src_file_location.parent().unwrap().to_str().unwrap();
-                self.tokens[i].kind = TokenKind::String(module_src_file_dir.to_string());
-                self.tokens[i].lexeme = module_src_file_dir.chars().collect();
+                module_src_file_dir = modules_src_file_location.parent().unwrap().to_str().unwrap().to_string();
             }
+
+            if !module_src_file_dir.ends_with("/") || !module_src_file_dir.ends_with("/") {
+                module_src_file_dir.push_str("/");
+            }
+            self.tokens[i].kind = TokenKind::String(module_src_file_dir.clone());
+            self.tokens[i].lexeme = module_src_file_dir.chars().collect();
         }
     }
 
@@ -350,6 +361,9 @@ impl Parser {
     fn prepend_with_import_name(&self, tokens: &mut Vec<Token>, prepend: Vec<char>) {
         for token in tokens.iter_mut() {
             if token.kind == TokenKind::Identifier {
+                if self.built_in_functions.is_built_in(&token.lexeme) {
+                    continue;
+                }
                 let mut i = 0;
                 for c in prepend.iter() {
                     token.lexeme.insert(i, c.clone());
