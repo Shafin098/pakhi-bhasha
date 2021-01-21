@@ -807,10 +807,77 @@ impl<T: IO> Interpreter<'_, T> {
                         Err(e) => panic!("{}", e.to_string()),
                     }
                 },
-                _ => panic!("_রিড-ফাইল() function path argument must be of type string"),
+                _ => panic!("_রিড-ফাইল() function's path argument must be of type string"),
             }
         } else {
             panic!("_রিড-ফাইল() function expects one argument");
+        }
+    }
+
+    fn built_in_fn_write_file(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 2 {
+            let path_data = self.interpret_expr(f.arguments[0].clone());
+            let content_data = self.interpret_expr(f.arguments[1].clone());
+            match (path_data, content_data) {
+                (DataType::String(p), DataType::String(content)) => {
+                    let path = Path::new(&p);
+                    if path.is_relative() {
+                        panic!("Cannot write file with relative file")
+                    }
+                    let write_result = std::fs::write(path, content);
+                    match write_result {
+                        Ok(_) => DataType::Bool(true),
+                        Err(e) => panic!("{}", e.to_string()),
+                    }
+                },
+                _ => panic!("_রাইট-ফাইল() function's both argument must be of type string"),
+            }
+        } else {
+            panic!("_রাইট-ফাইল() function expects two argument");
+        }
+    }
+
+    fn built_in_fn_delete_file(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 1 {
+            let path_data = self.interpret_expr(f.arguments[0].clone());
+            match path_data {
+                DataType::String(p) => {
+                    let path = Path::new(&p);
+                    if path.is_relative() {
+                        panic!("Cannot delete file with relative file")
+                    }
+                    let delete_result = std::fs::remove_file(path);
+                    match delete_result {
+                        Ok(_) => DataType::Bool(true),
+                        Err(e) => panic!("{}", e.to_string()),
+                    }
+                },
+                _ => panic!("_ডিলিট-ফাইল() function's argument must be of type string"),
+            }
+        } else {
+            panic!("_ডিলিট-ফাইল() function expects one argument");
+        }
+    }
+
+    fn built_in_fn_create_dir(&mut self, f: &parser::FunctionCall) -> DataType {
+        if f.arguments.len() == 1 {
+            let path_data = self.interpret_expr(f.arguments[0].clone());
+            match path_data {
+                DataType::String(p) => {
+                    let path = Path::new(&p);
+                    if path.is_relative() {
+                        panic!("Cannot create dir with relative file")
+                    }
+                    let create_dir_result = std::fs::create_dir_all(path);
+                    match create_dir_result {
+                        Ok(_) => DataType::Bool(true),
+                        Err(e) => panic!("{}", e.to_string()),
+                    }
+                },
+                _ => panic!(" function's argument must be of type string"),
+            }
+        } else {
+            panic!(" function expects one argument");
         }
     }
 
@@ -836,6 +903,9 @@ impl<T: IO> Interpreter<'_, T> {
                         "_স্ট্রিং-জয়েন" => { return self.built_in_fn_string_join(&f); },
                         "_টাইপ" => { return self.built_in_fn_type(&f); },
                         "_রিড-ফাইল" => { return self.built_in_fn_read_file(&f); },
+                        "_রাইট-ফাইল" => { return self.built_in_fn_write_file(&f); },
+                        "_ডিলিট-ফাইল" => { return self.built_in_fn_delete_file(&f); },
+                        "_ক্রিয়েট-ডাইরেক্টরি" => { return self.built_in_fn_create_dir(&f); },
                         _ => {},
                     }
                 } else {

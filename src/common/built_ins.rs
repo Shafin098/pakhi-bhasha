@@ -9,8 +9,9 @@ impl BuiltInFunctionList {
     pub(crate) fn new() -> Self {
         let mut functions_map: HashMap<Vec<char>, String> = HashMap::new();
         // this functions are built-in
-        let function_list = vec!["_লিস্ট-পুশ", "_লিস্ট-পপ", "_রিড-লাইন", "_এরর",
-                                           "_স্ট্রিং-স্প্লিট", "_স্ট্রিং-জয়েন", "_টাইপ", "_রিড-ফাইল"];
+        let function_list = vec!["_লিস্ট-পুশ", "_লিস্ট-পপ", "_রিড-লাইন", "_এরর", "_স্ট্রিং-স্প্লিট",
+                                 "_স্ট্রিং-জয়েন", "_টাইপ", "_রিড-ফাইল", "_রাইট-ফাইল", "_ডিলিট-ফাইল",
+                                 "_ক্রিয়েট-ডাইরেক্টরি"];
         for f_name in function_list {
             functions_map.insert(f_name.chars().collect(), f_name.to_string());
         }
