@@ -874,10 +874,39 @@ impl<T: IO> Interpreter<'_, T> {
                         Err(e) => panic!("{}", e.to_string()),
                     }
                 },
-                _ => panic!(" function's argument must be of type string"),
+                _ => panic!("_ক্রিয়েট-ডাইরেক্টরি() function's argument must be of type string"),
             }
         } else {
-            panic!(" function expects one argument");
+            panic!("_ক্রিয়েট-ডাইরেক্টরি() function expects one argument");
+        }
+    }
+
+    fn built_in_fn_read_dir(&mut self, f: &parser::FunctionCall) -> Vec<String> {
+        if f.arguments.len() == 1 {
+            let path_data = self.interpret_expr(f.arguments[0].clone());
+            match path_data {
+                DataType::String(p) => {
+                    let path = Path::new(&p);
+                    if path.is_relative() {
+                        panic!("Cannot read dir with relative file")
+                    }
+                    let create_dir_result = std::fs::read_dir(path);
+                    match create_dir_result {
+                        Ok(paths) => {
+                            let mut all_files_dirs: Vec<String> = Vec::new();
+                            for path in paths {
+                                let file_dir_name =  path.unwrap().file_name().to_str().unwrap().to_string();
+                                all_files_dirs.push(file_dir_name);
+                            }
+                            all_files_dirs
+                        },
+                        Err(e) => panic!("{}", e.to_string()),
+                    }
+                },
+                _ => panic!("_রিড-ডাইরেক্টরি() function's argument must be of type string"),
+            }
+        } else {
+            panic!("_রিড-ডাইরেক্টরি() function expects one argument");
         }
     }
 
@@ -906,7 +935,19 @@ impl<T: IO> Interpreter<'_, T> {
                         "_রাইট-ফাইল" => { return self.built_in_fn_write_file(&f); },
                         "_ডিলিট-ফাইল" => { return self.built_in_fn_delete_file(&f); },
                         "_ক্রিয়েট-ডাইরেক্টরি" => { return self.built_in_fn_create_dir(&f); },
-                        _ => {},
+                        "_রিড-ডাইরেক্টরি" => {
+                            // Files also could be dir
+                            let all_file_names_in_dir = self.built_in_fn_read_dir(&f);
+                            // Converting vec<string> to vec<datatype>
+                            let all_file_names = all_file_names_in_dir.iter()
+                                .map(|name| DataType::String(name.clone())).collect();
+
+                            self.lists.push(all_file_names);
+                            return DataType::List(self.lists.len() - 1);
+                        }
+                        built_in_function_name => {
+                            panic!("Built-in function: {} not defined", built_in_function_name)
+                        },
                     }
                 } else {
                     // Functions is definitely user-defined and not built-in
