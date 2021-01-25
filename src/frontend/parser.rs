@@ -137,8 +137,13 @@ impl Parser {
         self.expand_dirname_constant_for_root_module();
 
         let mut statements: Vec<Stmt> = Vec::new();
-        for _ in 0..self.tokens.len() {
-            statements.push(self.statements());
+        loop {
+            let s = self.statements();
+            if let Stmt::EOS = s {
+                statements.push(s);
+                break;
+            }
+            statements.push(s);
 
             if self.current > self.tokens.len() - 1 {
                 panic!("Error at last line, Expected a ';'");
@@ -174,7 +179,7 @@ impl Parser {
             TokenKind::At => todo!(),
             TokenKind::Comment => self.comment_block(),
             TokenKind::Import => self.module_import_stmt(),
-            TokenKind::EOT => { Stmt::EOS },
+            TokenKind::EOT => Stmt::EOS,
              _ => panic!("Err at line: {}\nDebug token{:#?}",
                         self.tokens[self.current].line, self.tokens[self.current]),
         }
