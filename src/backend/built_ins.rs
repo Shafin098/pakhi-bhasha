@@ -11,7 +11,7 @@ impl BuiltInFunctionList {
     pub(crate) fn new() -> Self {
         let mut functions_map: HashMap<Vec<char>, String> = HashMap::new();
         // this functions are built-in
-        let function_list = vec!["_লিস্ট-পুশ", "_লিস্ট-পপ", "_লিস্ট-লেন", "_রিড-লাইন", "_এরর",
+        let function_list = vec!["_স্ট্রিং", "_সংখ্যা", "_লিস্ট-পুশ", "_লিস্ট-পপ", "_লিস্ট-লেন", "_রিড-লাইন", "_এরর",
                                  "_স্ট্রিং-স্প্লিট", "_স্ট্রিং-জয়েন", "_টাইপ", "_রিড-ফাইল", "_রাইট-ফাইল", "_ডিলিট-ফাইল",
                                  "_নতুন-ডাইরেক্টরি", "_রিড-ডাইরেক্টরি", "_ডিলিট-ডাইরেক্টরি", "_ফাইল-নাকি-ডাইরেক্টরি"];
         for f_name in function_list {
@@ -31,6 +31,90 @@ impl BuiltInFunctionList {
 
     pub(crate) fn get_name(&self, function_name: &Vec<char>) -> String {
         self.built_in_functions.get(function_name).unwrap().clone()
+    }
+
+    // Converts DataType::Num to DataType::String
+    pub(crate) fn _to_string(arguments: Vec<DataType>) -> DataType {
+        if arguments.len() == 1 {
+            let number = arguments[0].clone();
+
+            if let DataType::Num(n) = number {
+                let bn_num_string = BuiltInFunctionList::replace_en_with_bn_digit(n.to_string());
+                return DataType::String(bn_num_string)
+            } else {
+                panic!("Datatype must be Number for converting to string")
+            }
+
+        } else { panic!("Function requires one arguments") }
+    }
+
+    // Converts DataType::String to DataType::Num
+    pub(crate) fn _to_num(arguments: Vec<DataType>) -> DataType {
+        if arguments.len() == 1 {
+            let string = arguments[0].clone();
+
+            if let DataType::String(bangla_num_string) = string {
+                let eng_num_string = BuiltInFunctionList::replace_bn_with_en_digit(bangla_num_string);
+                let convert_result = eng_num_string.parse::<f64>();
+                match convert_result {
+                    Ok(n) => return DataType::Num(n),
+                    Err(e) => panic!("{}", e.to_string()),
+                }
+            } else {
+                panic!("Datatype must be Number for converting to string")
+            }
+
+        } else { panic!("Function requires one arguments") }
+    }
+
+    fn replace_bn_with_en_digit(bn_num_string: String) -> String {
+        let mut num_chars: Vec<char> = bn_num_string.chars().collect();
+        for (i, c) in num_chars.clone().iter().enumerate() {
+            num_chars[i] = BuiltInFunctionList::bn_digit_to_en_digit(c);
+        }
+        let num_string: String = num_chars.iter().collect();
+        num_string
+    }
+
+    fn replace_en_with_bn_digit(en_num_string: String) -> String {
+        let mut num_chars: Vec<char> = en_num_string.chars().collect();
+        for (i, c) in num_chars.clone().iter().enumerate() {
+            num_chars[i] = BuiltInFunctionList::en_digit_to_bn_digit(c);
+        }
+        let num_string: String = num_chars.iter().collect();
+        num_string
+    }
+
+    fn bn_digit_to_en_digit(digit: &char) -> char {
+        match digit {
+            '০' => '0',
+            '১' => '1',
+            '২' => '2',
+            '৩' => '3',
+            '৪' => '4',
+            '৫' => '5',
+            '৬' => '6',
+            '৭' => '7',
+            '৮' => '8',
+            '৯' => '9',
+            _ => digit.clone(),
+        }
+    }
+
+    fn en_digit_to_bn_digit(digit: &char) -> char {
+        match digit {
+            '0' => '০',
+            '1' => '১',
+            '2' => '২',
+            '3' => '৩',
+            '4' => '৪',
+            '5' => '৫',
+            '6' => '৬',
+            '7' => '৭',
+            '8' => '৮',
+            '9' => '৯',
+            _ => digit.clone(),
+        }
     }
 
     pub(crate) fn _list_push(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
