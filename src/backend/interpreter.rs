@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::common::io::{IO, RealIO};
 use crate::frontend::parser;
 use crate::frontend::lexer::{TokenKind, Token};
-use crate::common::built_ins::BuiltInFunctionList;
+use crate::backend::built_ins::BuiltInFunctionList;
 
 enum Index {
     List(usize),
@@ -653,23 +653,24 @@ impl<T: IO> Interpreter<'_, T> {
         }
         // Finding out which built-in function and executing that accordingly
         match self.built_in_functions.get_name(&func_token.lexeme).as_str() {
-            "_লিস্ট-পুশ" => { return BuiltInFunctionList::built_in_fn_list_push(evaluated_arguments, &mut self.lists); },
-            "_লিস্ট-পপ" => { return BuiltInFunctionList::built_in_fn_list_pop(evaluated_arguments, &mut self.lists); },
-            "_রিড-লাইন" => { return BuiltInFunctionList::built_in_fn_read_line(evaluated_arguments); },
+            "_লিস্ট-পুশ" => { return BuiltInFunctionList::_list_push(evaluated_arguments, &mut self.lists); },
+            "_লিস্ট-পপ" => { return BuiltInFunctionList::_list_pop(evaluated_arguments, &mut self.lists); },
+            "_লিস্ট-লেন" => { return BuiltInFunctionList::_list_len(evaluated_arguments, &mut self.lists); },
+            "_রিড-লাইন" => { return BuiltInFunctionList::_read_line(evaluated_arguments); },
             "_এরর" => {
-                let error = BuiltInFunctionList::built_in_fn_error(evaluated_arguments);
+                let error = BuiltInFunctionList::_error(evaluated_arguments);
                 panic!("{}", error);
             },
-            "_স্ট্রিং-স্প্লিট" => { return BuiltInFunctionList::built_in_fn_string_split(evaluated_arguments, &mut self.lists); },
-            "_স্ট্রিং-জয়েন" => { return BuiltInFunctionList::built_in_fn_string_join(evaluated_arguments, &mut self.lists); },
-            "_টাইপ" => { return BuiltInFunctionList::built_in_fn_type(evaluated_arguments); },
-            "_রিড-ফাইল" => { return BuiltInFunctionList::built_in_fn_read_file(evaluated_arguments); },
-            "_রাইট-ফাইল" => { return BuiltInFunctionList::built_in_fn_write_file(evaluated_arguments); },
-            "_ডিলিট-ফাইল" => { return BuiltInFunctionList::built_in_fn_delete_file(evaluated_arguments); },
-            "_নতুন-ডাইরেক্টরি" => { return BuiltInFunctionList::built_in_fn_create_dir(evaluated_arguments); },
+            "_স্ট্রিং-স্প্লিট" => { return BuiltInFunctionList::_string_split(evaluated_arguments, &mut self.lists); },
+            "_স্ট্রিং-জয়েন" => { return BuiltInFunctionList::_string_join(evaluated_arguments, &mut self.lists); },
+            "_টাইপ" => { return BuiltInFunctionList::_type(evaluated_arguments); },
+            "_রিড-ফাইল" => { return BuiltInFunctionList::_read_file(evaluated_arguments); },
+            "_রাইট-ফাইল" => { return BuiltInFunctionList::_write_file(evaluated_arguments); },
+            "_ডিলিট-ফাইল" => { return BuiltInFunctionList::_delete_file(evaluated_arguments); },
+            "_নতুন-ডাইরেক্টরি" => { return BuiltInFunctionList::_create_dir(evaluated_arguments); },
             "_রিড-ডাইরেক্টরি" => {
                 // Files also could be dir
-                let all_file_names_in_dir = BuiltInFunctionList::built_in_fn_read_dir(evaluated_arguments);
+                let all_file_names_in_dir = BuiltInFunctionList::_read_dir(evaluated_arguments);
                 // Converting vec<string> to vec<datatype>
                 let all_file_names = all_file_names_in_dir.iter()
                     .map(|name| DataType::String(name.clone())).collect();
@@ -677,7 +678,8 @@ impl<T: IO> Interpreter<'_, T> {
                 self.lists.push(all_file_names);
                 return DataType::List(self.lists.len() - 1);
             },
-            "_ডিলিট-ডাইরেক্টরি" => { return BuiltInFunctionList::built_in_fn_delete_dir(evaluated_arguments); }
+            "_ডিলিট-ডাইরেক্টরি" => { return BuiltInFunctionList::_delete_dir(evaluated_arguments); },
+            "_ফাইল-নাকি-ডাইরেক্টরি" => { return BuiltInFunctionList::_file_or_dir(evaluated_arguments); },
             built_in_function_name => {
                 panic!("Built-in function: {} not defined", built_in_function_name)
             },

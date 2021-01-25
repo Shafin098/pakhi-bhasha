@@ -11,9 +11,9 @@ impl BuiltInFunctionList {
     pub(crate) fn new() -> Self {
         let mut functions_map: HashMap<Vec<char>, String> = HashMap::new();
         // this functions are built-in
-        let function_list = vec!["_লিস্ট-পুশ", "_লিস্ট-পপ", "_রিড-লাইন", "_এরর", "_স্ট্রিং-স্প্লিট",
-                                 "_স্ট্রিং-জয়েন", "_টাইপ", "_রিড-ফাইল", "_রাইট-ফাইল", "_ডিলিট-ফাইল",
-                                 "_নতুন-ডাইরেক্টরি", "_রিড-ডাইরেক্টরি", "_ডিলিট-ডাইরেক্টরি"];
+        let function_list = vec!["_লিস্ট-পুশ", "_লিস্ট-পপ", "_লিস্ট-লেন", "_রিড-লাইন", "_এরর",
+                                 "_স্ট্রিং-স্প্লিট", "_স্ট্রিং-জয়েন", "_টাইপ", "_রিড-ফাইল", "_রাইট-ফাইল", "_ডিলিট-ফাইল",
+                                 "_নতুন-ডাইরেক্টরি", "_রিড-ডাইরেক্টরি", "_ডিলিট-ডাইরেক্টরি", "_ফাইল-নাকি-ডাইরেক্টরি"];
         for f_name in function_list {
             functions_map.insert(f_name.chars().collect(), f_name.to_string());
         }
@@ -33,7 +33,7 @@ impl BuiltInFunctionList {
         self.built_in_functions.get(function_name).unwrap().clone()
     }
 
-    pub(crate) fn built_in_fn_list_push(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _list_push(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
         if arguments.len() == 2 {
             let list = arguments[0].clone();
 
@@ -65,7 +65,7 @@ impl BuiltInFunctionList {
         return DataType::Nil;
     }
 
-    pub(crate) fn built_in_fn_list_pop(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _list_pop(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
         if arguments.len() == 1 {
             let list = arguments[0].clone();
 
@@ -93,7 +93,20 @@ impl BuiltInFunctionList {
         return DataType::Nil;
     }
 
-    pub(crate) fn built_in_fn_read_line(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _list_len(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+        if arguments.len() == 1 {
+            let list = arguments[0].clone();
+
+            if let DataType::List(index) = list {
+                let actual_list = lists.get_mut(index).unwrap();
+                let length = actual_list.len();
+                DataType::Num(length as f64)
+            } else { panic!("Datatype must be list to get length")}
+
+        } else { panic!("Function requires one argument") }
+    }
+
+    pub(crate) fn _read_line(arguments: Vec<DataType>) -> DataType {
         if arguments.len() == 0 {
             let mut input = String::new();
             match std::io::stdin().read_line(&mut input) {
@@ -103,7 +116,7 @@ impl BuiltInFunctionList {
         } else { panic!("Function requires zero argument") }
     }
 
-    pub(crate) fn built_in_fn_error(arguments: Vec<DataType>) -> String {
+    pub(crate) fn _error(arguments: Vec<DataType>) -> String {
         if arguments.len() == 1 {
             let error = arguments[0].clone();
             match error {
@@ -115,7 +128,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_string_split(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _string_split(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
         if arguments.len() == 2 {
             let string = arguments[0].clone();
             let split_by = arguments[1].clone();
@@ -140,7 +153,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_string_join(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _string_join(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
         if arguments.len() == 2 {
             let list_of_strings = arguments[0].clone();
             let join_by = arguments[1].clone();
@@ -163,7 +176,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_type(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _type(arguments: Vec<DataType>) -> DataType {
         if arguments.len() == 1 {
             let data = arguments[0].clone();
             match data {
@@ -180,7 +193,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_read_file(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _read_file(arguments: Vec<DataType>) -> DataType {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -202,7 +215,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_write_file(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _write_file(arguments: Vec<DataType>) -> DataType {
         if arguments.len() == 2 {
             let path_data = arguments[0].clone();
             let content_data = arguments[1].clone();
@@ -225,7 +238,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_delete_file(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _delete_file(arguments: Vec<DataType>) -> DataType {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -247,7 +260,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_create_dir(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _create_dir(arguments: Vec<DataType>) -> DataType {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -269,7 +282,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_read_dir(arguments: Vec<DataType>) -> Vec<String> {
+    pub(crate) fn _read_dir(arguments: Vec<DataType>) -> Vec<String> {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -298,7 +311,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn built_in_fn_delete_dir(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _delete_dir(arguments: Vec<DataType>) -> DataType {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -317,6 +330,33 @@ impl BuiltInFunctionList {
             }
         } else {
             panic!("_ডিলিট-ডাইরেক্টরি() function expects one argument");
+        }
+    }
+
+    pub(crate) fn _file_or_dir(arguments: Vec<DataType>) -> DataType {
+        if arguments.len() == 1 {
+            let path_data = arguments[0].clone();
+            match path_data {
+                DataType::String(p) => {
+                    let path = Path::new(&p);
+                    if path.is_relative() {
+                        panic!("Cannot determine file or directory with relative file")
+                    }
+                    let result = std::fs::metadata(path);
+                    match result {
+                        Ok(m) => {
+                            match m.is_file() {
+                                true => DataType::String("ফাইল".to_string()),
+                                false => DataType::String("ডাইরেক্টরি".to_string())
+                            }
+                        },
+                        Err(e) => panic!("{}", e.to_string()),
+                    }
+                },
+                _ => panic!("_ফাইল-নাকি-ডাইরেক্টরি() function's argument must be of type string"),
+            }
+        } else {
+            panic!("_ফাইল-নাকি-ডাইরেক্টরি() function expects one argument");
         }
     }
 }

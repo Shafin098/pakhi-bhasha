@@ -6,7 +6,7 @@ use crate::common::io::IO;
 use std::path::Path;
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use crate::common::built_ins::BuiltInFunctionList;
+use crate::backend::built_ins::BuiltInFunctionList;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
