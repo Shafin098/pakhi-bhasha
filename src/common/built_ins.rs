@@ -13,7 +13,7 @@ impl BuiltInFunctionList {
         // this functions are built-in
         let function_list = vec!["_লিস্ট-পুশ", "_লিস্ট-পপ", "_রিড-লাইন", "_এরর", "_স্ট্রিং-স্প্লিট",
                                  "_স্ট্রিং-জয়েন", "_টাইপ", "_রিড-ফাইল", "_রাইট-ফাইল", "_ডিলিট-ফাইল",
-                                 "_ক্রিয়েট-ডাইরেক্টরি", "_রিড-ডাইরেক্টরি"];
+                                 "_নতুন-ডাইরেক্টরি", "_রিড-ডাইরেক্টরি", "_ডিলিট-ডাইরেক্টরি"];
         for f_name in function_list {
             functions_map.insert(f_name.chars().collect(), f_name.to_string());
         }
@@ -295,6 +295,28 @@ impl BuiltInFunctionList {
             }
         } else {
             panic!("_রিড-ডাইরেক্টরি() function expects one argument");
+        }
+    }
+
+    pub(crate) fn built_in_fn_delete_dir(arguments: Vec<DataType>) -> DataType {
+        if arguments.len() == 1 {
+            let path_data = arguments[0].clone();
+            match path_data {
+                DataType::String(p) => {
+                    let path = Path::new(&p);
+                    if path.is_relative() {
+                        panic!("Cannot delete directory with relative file")
+                    }
+                    let delete_result = std::fs::remove_dir_all(path);
+                    match delete_result {
+                        Ok(_) => DataType::Bool(true),
+                        Err(e) => panic!("{}", e.to_string()),
+                    }
+                },
+                _ => panic!("_ডিলিট-ডাইরেক্টরি() function's argument must be of type string"),
+            }
+        } else {
+            panic!("_ডিলিট-ডাইরেক্টরি() function expects one argument");
         }
     }
 }

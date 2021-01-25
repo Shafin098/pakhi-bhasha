@@ -666,7 +666,7 @@ impl<T: IO> Interpreter<'_, T> {
             "_রিড-ফাইল" => { return BuiltInFunctionList::built_in_fn_read_file(evaluated_arguments); },
             "_রাইট-ফাইল" => { return BuiltInFunctionList::built_in_fn_write_file(evaluated_arguments); },
             "_ডিলিট-ফাইল" => { return BuiltInFunctionList::built_in_fn_delete_file(evaluated_arguments); },
-            "_ক্রিয়েট-ডাইরেক্টরি" => { return BuiltInFunctionList::built_in_fn_create_dir(evaluated_arguments); },
+            "_নতুন-ডাইরেক্টরি" => { return BuiltInFunctionList::built_in_fn_create_dir(evaluated_arguments); },
             "_রিড-ডাইরেক্টরি" => {
                 // Files also could be dir
                 let all_file_names_in_dir = BuiltInFunctionList::built_in_fn_read_dir(evaluated_arguments);
@@ -676,7 +676,8 @@ impl<T: IO> Interpreter<'_, T> {
 
                 self.lists.push(all_file_names);
                 return DataType::List(self.lists.len() - 1);
-            }
+            },
+            "_ডিলিট-ডাইরেক্টরি" => { return BuiltInFunctionList::built_in_fn_delete_dir(evaluated_arguments); }
             built_in_function_name => {
                 panic!("Built-in function: {} not defined", built_in_function_name)
             },
