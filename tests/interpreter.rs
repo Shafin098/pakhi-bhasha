@@ -404,3 +404,43 @@ fn built_in_fn_type() {
     mock_io.expect_println("_ফাং");
     run_assert_all_true(ast, mock_io);
 }
+
+#[test]
+fn built_in_fn_to_string() {
+    let ast = src_to_ast(vec![
+        r#"দেখাও _স্ট্রিং(১) == "১";"#,
+        r#"দেখাও _স্ট্রিং(১.০) == "১";"#,
+        r#"দেখাও _স্ট্রিং(-১.০) == "-১";"#,
+        r#"দেখাও _স্ট্রিং(১৩.৩২) == "১৩.৩২";"#,
+        r#"দেখাও _স্ট্রিং(-৪৩.৪৩) == "-৪৩.৪৩";"#,
+        r#"দেখাও _স্ট্রিং(-০.৪৩) == "-০.৪৩";"#,
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    run_assert_all_true(ast, mock_io);
+}
+
+#[test]
+fn built_in_fn_to_num() {
+    let ast = src_to_ast(vec![
+        r#"দেখাও _সংখ্যা("১") == ১;"#,
+        r#"দেখাও _সংখ্যা("১.০") == ১;"#,
+        r#"দেখাও _সংখ্যা("-১.০") == -১;"#,
+        r#"দেখাও _সংখ্যা("১৩.৩২") == ১৩.৩২;"#,
+        r#"দেখাও _সংখ্যা("-৪৩.৪৩") == -৪৩.৪৩;"#,
+        r#"দেখাও _সংখ্যা("-০.৪৩") == -০.৪৩;"#,
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    mock_io.expect_println("সত্য");
+    run_assert_all_true(ast, mock_io);
+}
