@@ -98,7 +98,7 @@ fn list_multi_dim_mixed_indexing() {
 }
 
 #[test]
-fn list_mutate_push() {
+fn built_in_fn_list_mutate_push() {
     let ast = src_to_ast(vec![
         "নাম ক = [১, ২, ৩];",
         "_লিস্ট-পুশ(ক, ৪);",
@@ -110,7 +110,7 @@ fn list_mutate_push() {
 }
 
 #[test]
-fn list_push_middle() {
+fn built_in_fn_list_push_middle() {
     let ast = src_to_ast(vec![
         "নাম ক = [১, ২, ৩];",
         "_লিস্ট-পুশ(ক, ১, ৪);",
@@ -122,7 +122,7 @@ fn list_push_middle() {
 }
 
 #[test]
-fn list_pop_middle() {
+fn built_in_fn_list_pop_middle() {
     let ast = src_to_ast(vec![
         "নাম ক = [১, ২, ৩];",
         "_লিস্ট-পপ(ক, ১);",
@@ -130,6 +130,20 @@ fn list_pop_middle() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৩");
+    run_assert_all_true(ast, mock_io);
+}
+
+#[test]
+fn built_in_fn_list_len() {
+    let ast = src_to_ast(vec![
+        "নাম ক = [১, ২, ৩];",
+        "দেখাও _লিস্ট-লেন(ক);",
+        "নাম ক = [];",
+        "দেখাও _লিস্ট-লেন(ক);",
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("৩");
+    mock_io.expect_println("০");
     run_assert_all_true(ast, mock_io);
 }
 
