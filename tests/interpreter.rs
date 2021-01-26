@@ -360,7 +360,7 @@ fn function_decl_call() {
 
 #[test]
 #[should_panic(expected="এরর হয়েছে")]
-fn error() {
+fn built_in_fn_error() {
     let ast = src_to_ast(vec![
         r#"_এরর("এরর হয়েছে");"#,
         r#"দেখাও "দেখাবেনা";"#,

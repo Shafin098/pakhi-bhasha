@@ -2,6 +2,7 @@ use pakhi::common::io::{MockIO, IO};
 use std::io::Write;
 use serial_test::serial;
 
+// create_file creates file ./tmp folder
 fn create_file(file_name: &str, lines: Vec<&str>) {
     let current_dir = std::env::current_dir().unwrap();
     let tmp_dir = current_dir.join("tmp");
@@ -56,4 +57,107 @@ fn module_import_cyclic() {
 
     let mock_io: MockIO = MockIO::new();
     run_module("root.pakhi", mock_io);
+}
+
+#[test]
+#[serial]
+fn built_in_fn_read_file() {
+    create_file("test.txt", vec![
+        "test passed",
+    ]);
+    create_file("test.pakhi", vec![
+        "দেখাও _রিড-ফাইল(_ডাইরেক্টরি + \"./test.txt\");",
+    ]);
+
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("test passed");
+    run_module("test.pakhi", mock_io);
+}
+
+#[test]
+#[serial]
+fn built_in_fn_write_file() {
+    create_file("test.pakhi", vec![
+        "_রাইট-ফাইল(_ডাইরেক্টরি + \"./test.txt\", \"test passed\");",
+        "দেখাও _রিড-ফাইল(_ডাইরেক্টরি + \"./test.txt\");",
+    ]);
+
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("test passed");
+    run_module("test.pakhi", mock_io);
+}
+
+#[test]
+#[serial]
+fn built_in_fn_delete_file() {
+    create_file("test.txt", vec![
+        "test passed",
+    ])
+    ;create_file("test.pakhi", vec![
+        "দেখাও _ডিলিট-ফাইল(_ডাইরেক্টরি + \"./test.txt\");",
+    ]);
+
+    let mock_io: MockIO = MockIO::new();
+    run_module("test.pakhi", mock_io);
+    assert!(!std::path::Path::new("./tmp/test.txt").exists());
+}
+
+#[test]
+#[serial]
+fn built_in_fn_read_dir() {
+    // create_file creates file ./tmp folder
+    create_file("test.txt", vec!["test passed"]);
+    create_file("test.pakhi", vec![
+        "নাম ডার = _রিড-ডাইরেক্টরি(_ডাইরেক্টরি + \"./\");",
+        "দেখাও ডার[০];"
+    ]);
+
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("test.txt");
+    run_module("test.pakhi", mock_io);
+}
+
+#[test]
+#[serial]
+fn built_in_fn_create_dir() {
+    create_file("test.pakhi", vec![
+        "_নতুন-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
+        "_রাইট-ফাইল(_ডাইরেক্টরি + \"./test/test.txt\", \"test passed\");",
+        "নাম ড = _রিড-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
+        "দেখাও ড;"
+    ]);
+
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("[test.txt]");
+    run_module("test.pakhi", mock_io);
+}
+
+#[test]
+#[should_panic]
+#[serial]
+fn built_in_fn_delete_dir() {
+    create_file("test.pakhi", vec![
+        "_নতুন-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
+        "_ডিলিট-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\")",
+        "_রিড-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
+    ]);
+
+    let mock_io: MockIO = MockIO::new();
+    run_module("test.pakhi", mock_io);
+}
+
+#[test]
+#[serial]
+fn built_in_fn_file_or_dir() {
+    create_file("test.pakhi", vec![
+        "_নতুন-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
+        "_রাইট-ফাইল(_ডাইরেক্টরি + \"./test.txt\", \"test passed\");",
+        "দেখাও _ফাইল-নাকি-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test.txt\");",
+        "দেখাও _ফাইল-নাকি-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
+    ]);
+
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("ফাইল");
+    mock_io.expect_println("ডাইরেক্টরি");
+    run_module("test.pakhi", mock_io);
 }
