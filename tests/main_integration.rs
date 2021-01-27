@@ -61,8 +61,14 @@ fn module_import_cyclic() {
         r#"মডিউল ম = "root.pakhi";"#,
     ]);
 
-    let mock_io: MockIO = MockIO::new();
-    run_module("root.pakhi", mock_io);
+    let thread = std::thread::spawn(|| {
+        let mock_io: MockIO = MockIO::new();
+        run_module("root.pakhi", mock_io);
+    });
+    if thread.join().is_err() {
+        clean_test_tmp_dir();
+        panic!("Cyclic module dependency. Can't import root.pakhi from module.pakhi");
+    }
 }
 
 #[test]
@@ -148,8 +154,14 @@ fn built_in_fn_delete_dir() {
         "_রিড-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
     ]);
 
-    let mock_io: MockIO = MockIO::new();
-    run_module("test.pakhi", mock_io);
+    let thread = std::thread::spawn(|| {
+        let mock_io: MockIO = MockIO::new();
+        run_module("test.pakhi", mock_io);
+    });
+    if thread.join().is_err() {
+        clean_test_tmp_dir();
+        panic!()
+    }
 }
 
 #[test]
