@@ -226,13 +226,13 @@ impl Parser {
                         TokenKind::Plus => {
                             self.current += 1;
                         },
-                        _ => panic!("Error at line: {}, Module path must be static string literal")
+                        _ => panic!("Error at line: {}, Module path must be static string literal", self.tokens[self.current].line)
                     }
                 }
 
                 concated_module_path.to_str().unwrap().to_string()
             },
-            _ => panic!("Error at line: {}, Module path must be static string literal"),
+            _ => panic!("Error at line: {}, Module path must be static string literal", self.tokens[self.current].line),
         };
 
 

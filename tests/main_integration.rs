@@ -1,11 +1,17 @@
 use pakhi::common::io::{MockIO, IO};
 use std::io::Write;
-use serial_test::serial;
+use std::sync::{Arc, PoisonError};
+use std::sync::Mutex;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref MUTEX: Arc<Mutex<u32>> = Arc::new(Mutex::new(0));
+}
 
 // create_file creates file ./tmp folder
 fn create_file(file_name: &str, lines: Vec<&str>) {
     let current_dir = std::env::current_dir().unwrap();
-    let tmp_dir = current_dir.join("tmp");
+    let tmp_dir = current_dir.join("__tmp");
     std::fs::create_dir_all(&tmp_dir).unwrap();
     let mut file = std::fs::File::create(tmp_dir.join(file_name)).unwrap();
     let l: String = lines.join("\n");
@@ -13,7 +19,7 @@ fn create_file(file_name: &str, lines: Vec<&str>) {
 }
 
 fn run_module(module_name: &str, mut io: MockIO) {
-    let root_path = std::env::current_dir().unwrap().join("tmp");
+    let root_path = std::env::current_dir().unwrap().join("__tmp");
     let module_path = root_path.join(module_name);
     pakhi::start_pakhi(module_path.to_str().unwrap().parse().unwrap(), &mut io);
     clean_test_tmp_dir();
@@ -22,13 +28,13 @@ fn run_module(module_name: &str, mut io: MockIO) {
 
 fn clean_test_tmp_dir() {
     let current_dir = std::env::current_dir().unwrap();
-    let tmp_dir = current_dir.join("tmp");
+    let tmp_dir = current_dir.join("__tmp");
     std::fs::remove_dir_all(tmp_dir).unwrap()
 }
 
 #[test]
-#[serial]
 fn module_import() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("test.pakhi", vec![
         r#"মডিউল ম = "module.pakhi";"#,
         "দেখাও ম/ক;",
@@ -45,9 +51,9 @@ fn module_import() {
 }
 
 #[test]
-#[serial]
 #[should_panic(expected="Cyclic module dependency. Can't import root.pakhi from module.pakhi")]
 fn module_import_cyclic() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("root.pakhi", vec![
         r#"মডিউল ম = "module.pakhi";"#,
     ]);
@@ -60,8 +66,8 @@ fn module_import_cyclic() {
 }
 
 #[test]
-#[serial]
 fn built_in_fn_read_file() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("test.txt", vec![
         "test passed",
     ]);
@@ -75,8 +81,8 @@ fn built_in_fn_read_file() {
 }
 
 #[test]
-#[serial]
 fn built_in_fn_write_file() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("test.pakhi", vec![
         "_রাইট-ফাইল(_ডাইরেক্টরি + \"./test.txt\", \"test passed\");",
         "দেখাও _রিড-ফাইল(_ডাইরেক্টরি + \"./test.txt\");",
@@ -88,8 +94,8 @@ fn built_in_fn_write_file() {
 }
 
 #[test]
-#[serial]
 fn built_in_fn_delete_file() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("test.txt", vec![
         "test passed",
     ])
@@ -103,8 +109,8 @@ fn built_in_fn_delete_file() {
 }
 
 #[test]
-#[serial]
 fn built_in_fn_read_dir() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     // create_file creates file ./tmp folder
     create_file("test.txt", vec!["test passed"]);
     create_file("test.pakhi", vec![
@@ -118,8 +124,8 @@ fn built_in_fn_read_dir() {
 }
 
 #[test]
-#[serial]
 fn built_in_fn_create_dir() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("test.pakhi", vec![
         "_নতুন-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
         "_রাইট-ফাইল(_ডাইরেক্টরি + \"./test/test.txt\", \"test passed\");",
@@ -134,8 +140,8 @@ fn built_in_fn_create_dir() {
 
 #[test]
 #[should_panic]
-#[serial]
 fn built_in_fn_delete_dir() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("test.pakhi", vec![
         "_নতুন-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
         "_ডিলিট-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\")",
@@ -147,8 +153,8 @@ fn built_in_fn_delete_dir() {
 }
 
 #[test]
-#[serial]
 fn built_in_fn_file_or_dir() {
+    let _m = MUTEX.lock().unwrap_or_else(PoisonError::into_inner);
     create_file("test.pakhi", vec![
         "_নতুন-ডাইরেক্টরি(_ডাইরেক্টরি + \"./test\");",
         "_রাইট-ফাইল(_ডাইরেক্টরি + \"./test.txt\", \"test passed\");",
