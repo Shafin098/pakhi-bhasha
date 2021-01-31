@@ -1,8 +1,8 @@
-## <a>Introduction</a>
+## <a href="#">Introduction</a>
 Pakhi is a dynamically typed, general purpose programming language with Bangla alphabet written in rust.
-## <a>Language basics</a>
+## <a href="#">Language basics</a>
 ***
-#### <a>PrimitiveTypes</a>
+#### <a href="#">PrimitiveTypes</a>
 - __সংখ্যা_
 - __বুলিয়ান_
 - __স্ট্রিং_
@@ -10,15 +10,15 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
 - __রেকর্ড_
 - __ফাং_
 - __শূন্য_
-#### <a>Variable declaration</a>
+#### <a href="#">Variable declaration</a>
 ```
 নাম মাস = ১;
 ```
-#### <a>Print statement</a>
+#### <a href="#">Print statement</a>
 ```
 দেখাও মাস;
 ```
-#### <a>If-else statement</a>
+#### <a href="#">If-else statement</a>
 ```
 যদি মাস == ১ {
     দেখাও "জানুয়ারি";
@@ -26,12 +26,12 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
     দেখাও "জানা নেই";
 }
 ```
-#### <a>List</a>
+#### <a href="#">List</a>
 ```
 নাম সংখ্যা = [১, ২, ৩, ৪, ৫];
 দেখাও সংখ্যা[০];
 ```
-#### <a>Record</a>
+#### <a href="#">Record</a>
 ```
 নাম তথ্য =  @{
     "নাম" -> "সিফাত",
@@ -42,7 +42,7 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
 দেখাও তথ্য["বয়স"];
 দেখাও তথ্য["ফোন-নাম্বার"];
 ```
-#### <a>Loop statement</a>
+#### <a href="#">Loop statement</a>
 ```
 নাম সংখ্যা = [১, ২, ৩, ৪, ৫];
 নাম ইন্ডেক্স = ০;
@@ -57,7 +57,7 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
 _দেখাও "ফলাফল = ";
 দেখাও যোগফল;
 ```
-#### <a>Function declaration and function call</a>
+#### <a href="#">Function declaration and function call</a>
 ```
 ফাং জোড়(সংখ্যা) {
   যদি সংখ্যা % ২ == ০ {
@@ -70,7 +70,7 @@ _দেখাও "ফলাফল = ";
 নাম স = ৪২;
 জোড়(স);
 ```
-#### <a>Importing modules</a>
+#### <a href="#">Importing modules</a>
 Every pakhi source file is a module. Module can be imported with realtive path or absolute path.<br>
 *Module import syntax: ```মডিউল মডিউল-নাম = "মডিউল-পাথ";```*<br>
 *Module use syntax: ```মডিউল-নাম/মডিউলের-ফাংশন();```*
@@ -90,7 +90,7 @@ Every pakhi source file is a module. Module can be imported with realtive path o
     ফেরত সংখ্যা * সংখ্যা;
 } ফেরত;
 ```
-#### <a>Comment block</a>
+#### <a href="#">Comment block</a>
 ```
 # এক লাইন কমেন্ট #
 
@@ -114,7 +114,7 @@ Every pakhi source file is a module. Module can be imported with realtive path o
 দেখাও তথ্য["বয়স"];
 দেখাও তথ্য["ফোন-নাম্বার"];
 ```
-#### <a>Builtin functions and constants</a>
+#### <a href="#">Builtin functions and constants</a>
 ***
 * [_ডাইরেক্টরি](user_docs/built-in_functions_and_constants.md)
 * [_রিড-লাইন()](user_docs/built-in_functions_and_constants.md)
