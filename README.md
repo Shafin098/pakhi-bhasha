@@ -1,7 +1,8 @@
-## Introduction
+## <a>Introduction</a>
 Pakhi is a dynamically typed, general purpose programming language with Bangla alphabet written in rust.
-## Language basics
-#### PrimitiveTypes
+## <a>Language basics</a>
+***
+#### <a>PrimitiveTypes</a>
 - __সংখ্যা_
 - __বুলিয়ান_
 - __স্ট্রিং_
@@ -9,15 +10,15 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
 - __রেকর্ড_
 - __ফাং_
 - __শূন্য_
-#### Variable declaration
+#### <a>Variable declaration</a>
 ```
 নাম মাস = ১;
 ```
-#### Print statement
+#### <a>Print statement</a>
 ```
 দেখাও মাস;
 ```
-#### If-else statement
+#### <a>If-else statement</a>
 ```
 যদি মাস == ১ {
     দেখাও "জানুয়ারি";
@@ -25,12 +26,12 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
     দেখাও "জানা নেই";
 }
 ```
-#### List
+#### <a>List</a>
 ```
 নাম সংখ্যা = [১, ২, ৩, ৪, ৫];
 দেখাও সংখ্যা[০];
 ```
-#### Record
+#### <a>Record</a>
 ```
 নাম তথ্য =  @{
     "নাম" -> "সিফাত",
@@ -41,7 +42,7 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
 দেখাও তথ্য["বয়স"];
 দেখাও তথ্য["ফোন-নাম্বার"];
 ```
-#### Loop statement
+#### <a>Loop statement</a>
 ```
 নাম সংখ্যা = [১, ২, ৩, ৪, ৫];
 নাম ইন্ডেক্স = ০;
@@ -56,7 +57,7 @@ Pakhi is a dynamically typed, general purpose programming language with Bangla a
 _দেখাও "ফলাফল = ";
 দেখাও যোগফল;
 ```
-#### Function declaration and function call
+#### <a>Function declaration and function call</a>
 ```
 ফাং জোড়(সংখ্যা) {
   যদি সংখ্যা % ২ == ০ {
@@ -69,7 +70,7 @@ _দেখাও "ফলাফল = ";
 নাম স = ৪২;
 জোড়(স);
 ```
-#### Importing modules
+#### <a>Importing modules</a>
 Every pakhi source file is a module. Module can be imported with realtive path or absolute path.<br>
 *Module import syntax: ```মডিউল মডিউল-নাম = "মডিউল-পাথ";```*<br>
 *Module use syntax: ```মডিউল-নাম/মডিউলের-ফাংশন();```*
@@ -89,7 +90,7 @@ Every pakhi source file is a module. Module can be imported with realtive path o
     ফেরত সংখ্যা * সংখ্যা;
 } ফেরত;
 ```
-#### Comment block
+#### <a>Comment block</a>
 ```
 # এক লাইন কমেন্ট #
 
@@ -113,37 +114,28 @@ Every pakhi source file is a module. Module can be imported with realtive path o
 দেখাও তথ্য["বয়স"];
 দেখাও তথ্য["ফোন-নাম্বার"];
 ```
-#### Builtin functions
-```_রিড-লাইন()``` reads a line from stdin
-```
-দেখাও "কিছু টাইপ করুনঃ ";
-নাম ক = _রিড-লাইন();
-দেখাও ক;
-```
-```_লিস্ট-পুশ(লিস্ট, মান)``` adds a new element to end of a list
-```
-নাম লিস্ট = [১, ২, ৩];
-_লিস্ট-পুশ(লিস্ট, ৪);
-দেখাও লিস্ট;
-```
-```_লিস্ট-পুশ(লিস্ট, ইন্ডেক্স, মান)``` adds a new element at specific index 
-```
-নাম লিস্ট = [১, ২, ৩];
-_লিস্ট-পুশ(লিস্ট, ০, ৪);
-দেখাও লিস্ট;
-```
-```_লিস্ট-পপ(লিস্ট)``` removes last element from list
-```
-নাম লিস্ট = [১, ২, ৩];
-_লিস্ট-পপ(লিস্ট);
-দেখাও লিস্ট;
-```
-```_লিস্ট-পপ(লিস্ট, ইন্ডেক্স)``` removes element at a specific index
-```
-নাম লিস্ট = [১, ২, ৩];
-_লিস্ট-পপ(লিস্ট, ১);
-দেখাও লিস্ট;
-```
+#### <a>Builtin functions and constants</a>
+***
+* [_ডাইরেক্টরি](user_docs/built-in_functions_and_constants.md)
+* [_রিড-লাইন()](user_docs/built-in_functions_and_constants.md)
+* [_স্ট্রিং(মান)](user_docs/built-in_functions_and_constants.md)
+* [_সংখ্যা(মান)](user_docs/built-in_functions_and_constants.md)
+* [_লিস্ট-পুশ(লিস্ট, মান)](user_docs/built-in_functions_and_constants.md)
+* [_লিস্ট-পুশ(লিস্ট, ইন্ডেক্স, মান)](user_docs/built-in_functions_and_constants.md)
+* [_লিস্ট-পপ(লিস্ট)](user_docs/built-in_functions_and_constants.md)
+* [_লিস্ট-পপ(লিস্ট, ইন্ডেক্স)](user_docs/built-in_functions_and_constants.md)
+* [_লিস্ট-লেন(লিস্ট)](user_docs/built-in_functions_and_constants.md)
+* [_এরর("এরর মেসেজ")](user_docs/built-in_functions_and_constants.md)
+* [_স্ট্রিং-স্প্লিট(string, split-by)](user_docs/built-in_functions_and_constants.md)
+* [_স্ট্রিং-জয়েন(list-of-string, join-by)](user_docs/built-in_functions_and_constants.md)
+* [_টাইপ(value)](user_docs/built-in_functions_and_constants.md)
+* [_রিড-ফাইল("ফাইল-প্যাথ")](user_docs/built-in_functions_and_constants.md)
+* [_রাইট-ফাইল("ফাইল-প্যাথ", "কন্টেন্ট")](user_docs/built-in_functions_and_constants.md)
+* [_ডিলিট-ফাইল("ফাইল-প্যাথ", "কন্টেন্ট")](user_docs/built-in_functions_and_constants.md)
+* [_নতুন-ডাইরেক্টরি("ডাইরেক্টরি-প্যাথ")](user_docs/built-in_functions_and_constants.md)
+* [_রিড-ডাইরেক্টরি("ডাইরেক্টরি-প্যাথ")](user_docs/built-in_functions_and_constants.md)
+* [_ডিলিট-ডাইরেক্টরি("ডাইরেক্টরি-প্যাথ")](user_docs/built-in_functions_and_constants.md)
+* [_ফাইল-নাকি-ডাইরেক্টরি("প্যাথ")](user_docs/built-in_functions_and_constants.md)
 
 ## How to get pakhi on my computer?
 * Download only [pakhi-setup.exe](https://github.com/Shafin098/pakhi-bhasha/releases) from Assets
