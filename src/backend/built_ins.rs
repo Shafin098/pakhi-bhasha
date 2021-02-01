@@ -286,7 +286,7 @@ impl BuiltInFunctionList {
                     let read_result = std::fs::read_to_string(path);
                     match read_result {
                         Ok(content) => DataType::String(content),
-                        Err(e) => panic!("{}", e.to_string()),
+                        Err(e) => panic!("_রিড-ফাইল(): {}", e.to_string()),
                     }
                 },
                 _ => panic!("_রিড-ফাইল() function's path argument must be of type string"),
@@ -306,7 +306,7 @@ impl BuiltInFunctionList {
                     let write_result = std::fs::write(path, content);
                     match write_result {
                         Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("{}", e.to_string()),
+                        Err(e) => panic!("_রাইট-ফাইল(): {}", e.to_string()),
                     }
                 },
                 _ => panic!("_রাইট-ফাইল() function's both argument must be of type string"),
@@ -325,7 +325,7 @@ impl BuiltInFunctionList {
                     let delete_result = std::fs::remove_file(path);
                     match delete_result {
                         Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("{}", e.to_string()),
+                        Err(e) => panic!("_ডিলিট-ফাইল(): {}", e.to_string()),
                     }
                 },
                 _ => panic!("_ডিলিট-ফাইল() function's argument must be of type string"),
@@ -344,7 +344,7 @@ impl BuiltInFunctionList {
                     let create_dir_result = std::fs::create_dir_all(path);
                     match create_dir_result {
                         Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("{}", e.to_string()),
+                        Err(e) => panic!("_ক্রিয়েট-ডাইরেক্টরি(): {}", e.to_string()),
                     }
                 },
                 _ => panic!("_ক্রিয়েট-ডাইরেক্টরি() function's argument must be of type string"),
@@ -370,7 +370,7 @@ impl BuiltInFunctionList {
                             }
                             all_files_dirs
                         },
-                        Err(e) => panic!("{}", e.to_string()),
+                        Err(e) => panic!("_রিড-ডাইরেক্টরি(): {}, path: {}", e.to_string(), path.display()),
                     }
                 },
                 _ => panic!("_রিড-ডাইরেক্টরি() function's argument must be of type string"),
@@ -389,7 +389,7 @@ impl BuiltInFunctionList {
                     let delete_result = std::fs::remove_dir_all(path);
                     match delete_result {
                         Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("{}", e.to_string()),
+                        Err(e) => panic!("_ডিলিট-ডাইরেক্টরি(): {}", e.to_string()),
                     }
                 },
                 _ => panic!("_ডিলিট-ডাইরেক্টরি() function's argument must be of type string"),
@@ -413,7 +413,7 @@ impl BuiltInFunctionList {
                                 false => DataType::String("ডাইরেক্টরি".to_string())
                             }
                         },
-                        Err(e) => panic!("{}", e.to_string()),
+                        Err(e) => panic!("_ফাইল-নাকি-ডাইরেক্টরি(): {}, path: {}", e.to_string(), path.display()),
                     }
                 },
                 _ => panic!("_ফাইল-নাকি-ডাইরেক্টরি() function's argument must be of type string"),
