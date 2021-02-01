@@ -360,8 +360,8 @@ impl BuiltInFunctionList {
             match path_data {
                 DataType::String(p) => {
                     let path = Path::new(&p);
-                    let create_dir_result = std::fs::read_dir(path);
-                    match create_dir_result {
+                    let read_dir_result = std::fs::read_dir(path);
+                    match read_dir_result {
                         Ok(paths) => {
                             let mut all_files_dirs: Vec<String> = Vec::new();
                             for path in paths {
