@@ -359,6 +359,27 @@ fn function_decl_call() {
 }
 
 #[test]
+fn recursive_function_call() {
+    let ast = src_to_ast(vec![
+        "ফাং রি(ক) {",
+        "    যদি ক > ৪ {",
+        "        ফেরত ক;",
+        "    }",
+        "    দেখাও ক;",
+        "    রি(ক + ১);",
+        "} ফেরত;",
+        "রি(০);",
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("০");
+    mock_io.expect_println("১");
+    mock_io.expect_println("২");
+    mock_io.expect_println("৩");
+    mock_io.expect_println("৪");
+    run_assert_all_true(ast, mock_io);
+}
+
+#[test]
 #[should_panic(expected="এরর হয়েছে")]
 fn built_in_fn_error() {
     let ast = src_to_ast(vec![

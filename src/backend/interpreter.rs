@@ -716,11 +716,6 @@ impl<T: IO> Interpreter<'_, T> {
                             }
                         }
 
-                        // root key indicates its a functions root env
-                        // using 1root as variable name so that user cant accidentally declare 1root
-                        // because using number before variable name was not allowed in grammar rule
-                        root_env.insert("1root".to_string(), Some(DataType::Nil));
-
                         // creating root_envs
                         self.envs.push(root_env);
 
@@ -935,7 +930,6 @@ impl<T: IO> Interpreter<'_, T> {
         let var_key: String = v.lexeme.clone().into_iter().collect();
 
         for env in self.envs.iter_mut().rev() {
-
             let expr_result = env.get(&*var_key);
             if expr_result.is_some() {
                 match expr_result.unwrap() {
@@ -944,11 +938,6 @@ impl<T: IO> Interpreter<'_, T> {
                         panic!("Variable wasn't initialized {:#?}", v.lexeme)
                     },
                 }
-            }
-
-            // if contains root means at current env is root of the function
-            if env.contains_key("1root") {
-                break;
             }
         }
         panic!("Variable wasn't initialized {:#?}", v.lexeme);
