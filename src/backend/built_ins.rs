@@ -283,9 +283,6 @@ impl BuiltInFunctionList {
             match path_data {
                 DataType::String(p) => {
                     let path = Path::new(&p);
-                    if path.is_relative() {
-                        panic!("Cannot read file with relative file")
-                    }
                     let read_result = std::fs::read_to_string(path);
                     match read_result {
                         Ok(content) => DataType::String(content),
@@ -306,9 +303,6 @@ impl BuiltInFunctionList {
             match (path_data, content_data) {
                 (DataType::String(p), DataType::String(content)) => {
                     let path = Path::new(&p);
-                    if path.is_relative() {
-                        panic!("Cannot write file with relative file")
-                    }
                     let write_result = std::fs::write(path, content);
                     match write_result {
                         Ok(_) => DataType::Bool(true),
@@ -328,9 +322,6 @@ impl BuiltInFunctionList {
             match path_data {
                 DataType::String(p) => {
                     let path = Path::new(&p);
-                    if path.is_relative() {
-                        panic!("Cannot delete file with relative file")
-                    }
                     let delete_result = std::fs::remove_file(path);
                     match delete_result {
                         Ok(_) => DataType::Bool(true),
@@ -350,9 +341,6 @@ impl BuiltInFunctionList {
             match path_data {
                 DataType::String(p) => {
                     let path = Path::new(&p);
-                    if path.is_relative() {
-                        panic!("Cannot create dir with relative file")
-                    }
                     let create_dir_result = std::fs::create_dir_all(path);
                     match create_dir_result {
                         Ok(_) => DataType::Bool(true),
@@ -372,9 +360,6 @@ impl BuiltInFunctionList {
             match path_data {
                 DataType::String(p) => {
                     let path = Path::new(&p);
-                    if path.is_relative() {
-                        panic!("Cannot read dir with relative file")
-                    }
                     let create_dir_result = std::fs::read_dir(path);
                     match create_dir_result {
                         Ok(paths) => {
@@ -401,9 +386,6 @@ impl BuiltInFunctionList {
             match path_data {
                 DataType::String(p) => {
                     let path = Path::new(&p);
-                    if path.is_relative() {
-                        panic!("Cannot delete directory with relative file")
-                    }
                     let delete_result = std::fs::remove_dir_all(path);
                     match delete_result {
                         Ok(_) => DataType::Bool(true),
@@ -423,9 +405,6 @@ impl BuiltInFunctionList {
             match path_data {
                 DataType::String(p) => {
                     let path = Path::new(&p);
-                    if path.is_relative() {
-                        panic!("Cannot determine file or directory with relative file")
-                    }
                     let result = std::fs::metadata(path);
                     match result {
                         Ok(m) => {
