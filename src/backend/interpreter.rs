@@ -43,7 +43,11 @@ pub struct Interpreter<'a, T: IO> {
     envs: Vec<HashMap<String, Option<DataType>>>,
     previous_if_was_executed: Vec<bool>,
     lists: Vec<Vec<DataType>>,
+    // free list tracks which list indexes are free to be re-used for allocating as list datatype
+    free_lists: Vec<usize>,
     nameless_records: Vec<HashMap<String, DataType>>,
+    // free records tracks which record indexes are free to be re-used for allocating as record datatype
+    free_nameless_records: Vec<usize>,
     io: &'a mut T,
     // Storing all built-in function names because when modules identifiers are renamed
     // we don't want to rename built-in functions
@@ -60,7 +64,9 @@ impl<T: IO> Interpreter<'_, T> {
             envs: vec![HashMap::new()],
             previous_if_was_executed: Vec::new(),
             lists: Vec::new(),
+            free_lists: Vec::new(),
             nameless_records: Vec::new(),
+            free_nameless_records: Vec::new(),
             io,
             built_in_functions: BuiltInFunctionList::new(),
         }
@@ -69,7 +75,112 @@ impl<T: IO> Interpreter<'_, T> {
     pub fn run(&mut self) {
         while self.statements[self.current] != parser::Stmt::EOS {
             self.interpret();
+            self.collect_garbage();
         }
+    }
+
+    fn collect_garbage(&mut self) {
+        let (marked_lists, marked_nameless_records) = self.gc_mark();
+        self.gc_sweep(marked_lists, marked_nameless_records);
+    }
+
+    fn gc_sweep(&mut self, marked_lists: Vec<bool>, marked_record: Vec<bool>) {
+        for (index, alive) in marked_lists.iter().enumerate() {
+            if !alive {
+                // replacing list with empty list, which will be re_used later
+                self.lists[index] = Vec::new();
+                self.free_lists.push(index);
+            }
+        }
+
+        for (index, alive) in marked_record.iter().enumerate() {
+            if !alive {
+                // replacing record with empty record, which will be re_used later
+                self.nameless_records[index] = HashMap::new();
+                self.free_nameless_records.push(index);
+            }
+        }
+    }
+
+    fn gc_mark(&mut self) -> (Vec<bool>, Vec<bool>) {
+        let mut marked_lists: Vec<bool> = Vec::with_capacity(self.lists.len());
+        for _ in 0..self.lists.len() {
+            marked_lists.push(false);
+        }
+
+        let mut marked_records: Vec<bool> = Vec::with_capacity(self.nameless_records.len());
+        for _ in 0..self.nameless_records.len() {
+            marked_records.push(false);
+        }
+
+        let (root_lists, root_records) = self.find_root_objects();
+
+        for root_list_index in root_lists {
+            marked_lists[root_list_index] = true;
+            let list = self.lists.get(root_list_index).unwrap();
+            self.mark_all_reachable_from_list(list, &mut marked_lists, &mut marked_records);
+        }
+
+        for root_record_index in root_records {
+            marked_records[root_record_index] = true;
+            let record = self.nameless_records.get(root_record_index).unwrap();
+            self.mark_all_reachable_from_record(record, &mut marked_lists, &mut marked_records);
+        }
+
+        (marked_lists, marked_records)
+    }
+
+    fn mark_all_reachable_from_list(&self, list: &Vec<DataType>, marked_lists: &mut Vec<bool>, marked_records: &mut Vec<bool>) {
+        for elem in list {
+            match elem {
+                DataType::List(index) => {
+                    marked_lists[index.clone()] = true;
+                    let list = self.lists.get(index.clone()).unwrap();
+                    self.mark_all_reachable_from_list(list, marked_lists, marked_records);
+                },
+                DataType::NamelessRecord(index) => {
+                    marked_records[index.clone()] = true;
+                    let record = self.nameless_records.get(index.clone()).unwrap();
+                    self.mark_all_reachable_from_record(record, marked_lists, marked_records);
+                },
+                _ => {}
+            }
+        }
+    }
+
+    fn mark_all_reachable_from_record(&self, record: &HashMap<String, DataType>, marked_lists: &mut Vec<bool>, marked_records: &mut Vec<bool>) {
+        for (_, elem) in record.into_iter() {
+            match elem {
+                DataType::List(index) => {
+                    marked_lists[index.clone()] = true;
+                    let list = self.lists.get(index.clone()).unwrap();
+                    self.mark_all_reachable_from_list(list, marked_lists, marked_records);
+                },
+                DataType::NamelessRecord(index) => {
+                    marked_records[index.clone()] = true;
+                    let record = self.nameless_records.get(index.clone()).unwrap();
+                    self.mark_all_reachable_from_record(record, marked_lists, marked_records);
+                },
+                _ => {}
+            }
+        }
+    }
+
+    fn find_root_objects(&self) -> (Vec<usize>, Vec<usize>) {
+        let mut root_lists: Vec<usize> = Vec::new();
+        let mut root_records: Vec<usize> = Vec::new();
+        for env in self.envs.iter() {
+            for (_, val) in env.into_iter() {
+                if let Some(data_type) = val {
+                    match data_type {
+                        DataType::List(index) => root_lists.push(index.clone()),
+                        DataType::NamelessRecord(index) => root_records.push(index.clone()),
+                        _ => {}
+                    }
+                }
+            }
+        }
+        (root_lists, root_records)
     }
 
     fn interpret(&mut self) {
@@ -677,8 +788,9 @@ impl<T: IO> Interpreter<'_, T> {
                 let all_file_names = all_file_names_in_dir.iter()
                     .map(|name| DataType::String(name.clone())).collect();
 
-                self.lists.push(all_file_names);
-                return DataType::List(self.lists.len() - 1);
+                let pakhi_list_data = self.create_new_list_datatype(all_file_names);
+                return pakhi_list_data;
+
             },
             "_ডিলিট-ডাইরেক্টরি" => return BuiltInFunctionList::_delete_dir(evaluated_arguments),
             "_ফাইল-নাকি-ডাইরেক্টরি" => return BuiltInFunctionList::_file_or_dir(evaluated_arguments),
@@ -775,9 +887,8 @@ impl<T: IO> Interpreter<'_, T> {
                 for elem in array {
                     pakhi_array.push(self.interpret_expr(elem));
                 }
-
-                self.lists.push(pakhi_array);
-                return DataType::List(self.lists.len() - 1);
+                let pakhi_list_data = self.create_new_list_datatype(pakhi_array);
+                return pakhi_list_data;
             },
             parser::Primary::Group(expr) => self.interpret_expr(*expr),
             parser::Primary::NamelessRecord(key_values) => {
@@ -790,8 +901,8 @@ impl<T: IO> Interpreter<'_, T> {
                     }
                 }
 
-                self.nameless_records.push(record);
-                return  DataType::NamelessRecord(self.nameless_records.len() - 1);
+                let pakhi_record_datatype = self.create_new_nameless_record_datatype(record);
+                return pakhi_record_datatype;
             }
         }
     }
@@ -870,8 +981,8 @@ impl<T: IO> Interpreter<'_, T> {
                     for elem in right_arr {
                         concatted_arr.push(elem);
                     }
-                    self.lists.push(concatted_arr);
-                    return DataType::List(self.lists.len() - 1);
+                    let pakhi_list_data = self.create_new_list_datatype(concatted_arr);
+                    return pakhi_list_data;
                 }
                 panic!("Invalid operation on Arry")
             }
@@ -941,6 +1052,32 @@ impl<T: IO> Interpreter<'_, T> {
             }
         }
         panic!("Variable wasn't initialized {:#?}", v.lexeme);
+    }
+
+    fn create_new_list_datatype(&mut self, new_list: Vec<DataType>) -> DataType {
+        match self.free_lists.pop() {
+            Some(free_index) => {
+                self.lists[free_index] = new_list;
+                return DataType::List(free_index);
+            },
+            None => {
+                self.lists.push(new_list);
+                return DataType::List(self.lists.len() - 1);
+            }
+        }
+    }
+
+    fn create_new_nameless_record_datatype(&mut self, new_record: HashMap<String, DataType>) -> DataType {
+        match self.free_nameless_records.pop() {
+            Some(free_index) => {
+                self.nameless_records[free_index] = new_record;
+                return DataType::NamelessRecord(free_index);
+            },
+            None => {
+                self.nameless_records.push(new_record);
+                return DataType::NamelessRecord(self.nameless_records.len() - 1);
+            }
+        }
     }
 
     fn to_bn_num(&self, n: f64) -> String {
