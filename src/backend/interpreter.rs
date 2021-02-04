@@ -48,6 +48,8 @@ pub struct Interpreter<'a, T: IO> {
     nameless_records: Vec<HashMap<String, DataType>>,
     // free records tracks which record indexes are free to be re-used for allocating as record datatype
     free_nameless_records: Vec<usize>,
+    // This is used as parameter of gc to decide if it's time to collect garbage
+    total_allocated_object_count: usize,
     io: &'a mut T,
     // Storing all built-in function names because when modules identifiers are renamed
     // we don't want to rename built-in functions
@@ -67,6 +69,7 @@ impl<T: IO> Interpreter<'_, T> {
             free_lists: Vec::new(),
             nameless_records: Vec::new(),
             free_nameless_records: Vec::new(),
+            total_allocated_object_count: 0,
             io,
             built_in_functions: BuiltInFunctionList::new(),
         }
@@ -75,7 +78,10 @@ impl<T: IO> Interpreter<'_, T> {
     pub fn run(&mut self) {
         while self.statements[self.current] != parser::Stmt::EOS {
             self.interpret();
-            self.collect_garbage();
+            if self.total_allocated_object_count >= 100 {
+                self.collect_garbage();
+                self.total_allocated_object_count = 0;
+            }
         }
     }
 
@@ -107,15 +113,8 @@ impl<T: IO> Interpreter<'_, T> {
     }
 
     fn gc_mark(&mut self) -> (Vec<bool>, Vec<bool>) {
-        let mut marked_lists: Vec<bool> = Vec::with_capacity(self.lists.len());
-        for _ in 0..self.lists.len() {
-            marked_lists.push(false);
-        }
-
-        let mut marked_records: Vec<bool> = Vec::with_capacity(self.nameless_records.len());
-        for _ in 0..self.nameless_records.len() {
-            marked_records.push(false);
-        }
+        let mut marked_lists: Vec<bool> = vec![false; self.lists.len()];
+        let mut marked_records: Vec<bool> = vec![false; self.nameless_records.len()];
 
         let (root_lists, root_records) = self.find_root_objects();
 
@@ -138,14 +137,20 @@ impl<T: IO> Interpreter<'_, T> {
         for elem in list {
             match elem {
                 DataType::List(index) => {
-                    marked_lists[index.clone()] = true;
-                    let list = self.lists.get(index.clone()).unwrap();
-                    self.mark_all_reachable_from_list(list, marked_lists, marked_records);
+                    // If already marked true don't need to revisit
+                    if  !marked_lists[index.clone()] {
+                        marked_lists[index.clone()] = true;
+                        let list = self.lists.get(index.clone()).unwrap();
+                        self.mark_all_reachable_from_list(list, marked_lists, marked_records);
+                    }
                 },
                 DataType::NamelessRecord(index) => {
-                    marked_records[index.clone()] = true;
-                    let record = self.nameless_records.get(index.clone()).unwrap();
-                    self.mark_all_reachable_from_record(record, marked_lists, marked_records);
+                    // If already marked true don't need to revisit
+                    if  !marked_records[index.clone()] {
+                        marked_records[index.clone()] = true;
+                        let record = self.nameless_records.get(index.clone()).unwrap();
+                        self.mark_all_reachable_from_record(record, marked_lists, marked_records);
+                    }
                 },
                 _ => {}
             }
@@ -156,14 +161,20 @@ impl<T: IO> Interpreter<'_, T> {
         for (_, elem) in record.into_iter() {
             match elem {
                 DataType::List(index) => {
-                    marked_lists[index.clone()] = true;
-                    let list = self.lists.get(index.clone()).unwrap();
-                    self.mark_all_reachable_from_list(list, marked_lists, marked_records);
+                    // If already marked true don't need to revisit
+                    if  !marked_lists[index.clone()] {
+                        marked_lists[index.clone()] = true;
+                        let list = self.lists.get(index.clone()).unwrap();
+                        self.mark_all_reachable_from_list(list, marked_lists, marked_records);
+                    }
                 },
                 DataType::NamelessRecord(index) => {
-                    marked_records[index.clone()] = true;
-                    let record = self.nameless_records.get(index.clone()).unwrap();
-                    self.mark_all_reachable_from_record(record, marked_lists, marked_records);
+                    // If already marked true don't need to revisit
+                    if  !marked_records[index.clone()] {
+                        marked_records[index.clone()] = true;
+                        let record = self.nameless_records.get(index.clone()).unwrap();
+                        self.mark_all_reachable_from_record(record, marked_lists, marked_records);
+                    }
                 },
                 _ => {}
             }
@@ -1062,8 +1073,12 @@ impl<T: IO> Interpreter<'_, T> {
     }
 
     fn create_new_list_datatype(&mut self, new_list: Vec<DataType>) -> DataType {
+        // self.total_allocated_object_count is used as a parameter in gc to determine
+        // if its time collect garbage
+        self.total_allocated_object_count += new_list.len();
+
         if self.free_lists.len() > 0 {
-            let free_index = self.free_lists.remove(0);
+            let free_index = self.free_lists.pop().unwrap();
             self.lists[free_index] = new_list;
             return DataType::List(free_index);
         } else {
@@ -1073,8 +1088,12 @@ impl<T: IO> Interpreter<'_, T> {
     }
 
     fn create_new_nameless_record_datatype(&mut self, new_record: HashMap<String, DataType>) -> DataType {
+        // self.total_allocated_object_count is used as a parameter in gc to determine
+        // if its time collect garbage
+        self.total_allocated_object_count += new_record.len();
+
         if self.free_nameless_records.len() > 0 {
-            let free_index = self.free_nameless_records.remove(0);
+            let free_index = self.free_nameless_records.pop().unwrap();
             self.nameless_records[free_index] = new_record;
             return DataType::NamelessRecord(free_index);
         } else {
