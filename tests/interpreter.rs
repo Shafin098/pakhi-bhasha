@@ -346,6 +346,19 @@ fn loop_test() {
 }
 
 #[test]
+fn loop_no_new_env() {
+    let ast = src_to_ast(vec![
+        "লুপ {",
+        "   দেখাও ১;",
+        "   থামাও;",
+        "} আবার;"
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println("১");
+    run_assert_all_true(ast, mock_io);
+}
+
+#[test]
 fn function_decl_call() {
     let ast = src_to_ast(vec![
         "ফাং দ্বিগুন(সংখ্যা) {",

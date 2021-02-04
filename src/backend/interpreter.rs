@@ -218,13 +218,16 @@ impl<T: IO> Interpreter<'_, T> {
             parser::Stmt::Break => {
                 self.current += 1;
 
-                // destroying envs that was created inside loop
-                let last_loop_env_index = self.loops.len() - 1;
-
-                let total_envs_created_inside_loop = self.envs.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
-                for _ in 0..total_envs_created_inside_loop {
-                    self.envs.pop();
+                // len <= 0 means no new environment was made inside loop
+                if self.loops.len() > 0 {
+                    // destroying all envs that was created inside loop
+                    let last_loop_env_index = self.loops.len() - 1;
+                    let total_envs_created_inside_loop = self.envs.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
+                    for _ in 0..total_envs_created_inside_loop {
+                        self.envs.pop();
+                    }
                 }
+
                 // destroying loop env
                 self.loops.pop();
 
