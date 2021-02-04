@@ -89,7 +89,9 @@ impl<T: IO> Interpreter<'_, T> {
             if !alive {
                 // replacing list with empty list, which will be re_used later
                 self.lists[index] = Vec::new();
-                self.free_lists.push(index);
+                if !self.free_lists.contains(&index) {
+                    self.free_lists.push(index);
+                }
             }
         }
 
@@ -97,7 +99,9 @@ impl<T: IO> Interpreter<'_, T> {
             if !alive {
                 // replacing record with empty record, which will be re_used later
                 self.nameless_records[index] = HashMap::new();
-                self.free_nameless_records.push(index);
+                if !self.free_nameless_records.contains(&index) {
+                    self.free_nameless_records.push(index);
+                }
             }
         }
     }
@@ -1058,28 +1062,24 @@ impl<T: IO> Interpreter<'_, T> {
     }
 
     fn create_new_list_datatype(&mut self, new_list: Vec<DataType>) -> DataType {
-        match self.free_lists.pop() {
-            Some(free_index) => {
-                self.lists[free_index] = new_list;
-                return DataType::List(free_index);
-            },
-            None => {
-                self.lists.push(new_list);
-                return DataType::List(self.lists.len() - 1);
-            }
+        if self.free_lists.len() > 0 {
+            let free_index = self.free_lists.remove(0);
+            self.lists[free_index] = new_list;
+            return DataType::List(free_index);
+        } else {
+            self.lists.push(new_list);
+            return DataType::List(self.lists.len() - 1);
         }
     }
 
     fn create_new_nameless_record_datatype(&mut self, new_record: HashMap<String, DataType>) -> DataType {
-        match self.free_nameless_records.pop() {
-            Some(free_index) => {
-                self.nameless_records[free_index] = new_record;
-                return DataType::NamelessRecord(free_index);
-            },
-            None => {
-                self.nameless_records.push(new_record);
-                return DataType::NamelessRecord(self.nameless_records.len() - 1);
-            }
+        if self.free_nameless_records.len() > 0 {
+            let free_index = self.free_nameless_records.remove(0);
+            self.nameless_records[free_index] = new_record;
+            return DataType::NamelessRecord(free_index);
+        } else {
+            self.nameless_records.push(new_record);
+            return DataType::NamelessRecord(self.nameless_records.len() - 1);
         }
     }
 
