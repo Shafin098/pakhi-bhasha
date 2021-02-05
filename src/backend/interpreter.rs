@@ -79,7 +79,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     pub fn run(&mut self) {
         while self.statements[self.current] != parser::Stmt::EOS {
             self.interpret();
-            if self.total_allocated_object_count >= 300 {
+            if self.total_allocated_object_count >= 1000 {
                 let mut gc = mark_sweep::GC::new(&mut self.envs, &mut self.lists,
                                              &mut self.free_lists,
                                              &mut self.nameless_records,
