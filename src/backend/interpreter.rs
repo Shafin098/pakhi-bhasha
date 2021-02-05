@@ -3,6 +3,7 @@ use crate::common::io::{IO, RealIO};
 use crate::frontend::parser;
 use crate::frontend::lexer::{TokenKind, Token};
 use crate::backend::built_ins::BuiltInFunctionList;
+use crate::backend::mark_sweep;
 
 enum Index {
     List(usize),
@@ -56,7 +57,7 @@ pub struct Interpreter<'a, T: IO> {
     built_in_functions: BuiltInFunctionList,
 }
 
-impl<T: IO> Interpreter<'_, T> {
+impl<'a, T: 'a + IO> Interpreter<'a, T> {
     pub fn new(statements: Vec<parser::Stmt>, io: &mut T) -> Interpreter<T> {
         Interpreter {
             current: 0,
@@ -78,124 +79,15 @@ impl<T: IO> Interpreter<'_, T> {
     pub fn run(&mut self) {
         while self.statements[self.current] != parser::Stmt::EOS {
             self.interpret();
-            if self.total_allocated_object_count >= 100 {
-                self.collect_garbage();
+            if self.total_allocated_object_count >= 300 {
+                let mut gc = mark_sweep::GC::new(&mut self.envs, &mut self.lists,
+                                             &mut self.free_lists,
+                                             &mut self.nameless_records,
+                                             &mut self.free_nameless_records);
+                gc.collect_garbage();
                 self.total_allocated_object_count = 0;
             }
         }
-    }
-
-    fn collect_garbage(&mut self) {
-        let (marked_lists, marked_nameless_records) = self.gc_mark();
-        self.gc_sweep(marked_lists, marked_nameless_records);
-    }
-
-    fn gc_sweep(&mut self, marked_lists: Vec<bool>, marked_record: Vec<bool>) {
-        for (index, alive) in marked_lists.iter().enumerate() {
-            if !alive {
-                // replacing list with empty list, which will be re_used later
-                self.lists[index] = Vec::new();
-                if !self.free_lists.contains(&index) {
-                    self.free_lists.push(index);
-                }
-            }
-        }
-
-        for (index, alive) in marked_record.iter().enumerate() {
-            if !alive {
-                // replacing record with empty record, which will be re_used later
-                self.nameless_records[index] = HashMap::new();
-                if !self.free_nameless_records.contains(&index) {
-                    self.free_nameless_records.push(index);
-                }
-            }
-        }
-    }
-
-    fn gc_mark(&mut self) -> (Vec<bool>, Vec<bool>) {
-        let mut marked_lists: Vec<bool> = vec![false; self.lists.len()];
-        let mut marked_records: Vec<bool> = vec![false; self.nameless_records.len()];
-
-        let (root_lists, root_records) = self.find_root_objects();
-
-        for root_list_index in root_lists {
-            marked_lists[root_list_index] = true;
-            let list = self.lists.get(root_list_index).unwrap();
-            self.mark_all_reachable_from_list(list, &mut marked_lists, &mut marked_records);
-        }
-
-        for root_record_index in root_records {
-            marked_records[root_record_index] = true;
-            let record = self.nameless_records.get(root_record_index).unwrap();
-            self.mark_all_reachable_from_record(record, &mut marked_lists, &mut marked_records);
-        }
-
-        (marked_lists, marked_records)
-    }
-
-    fn mark_all_reachable_from_list(&self, list: &Vec<DataType>, marked_lists: &mut Vec<bool>, marked_records: &mut Vec<bool>) {
-        for elem in list {
-            match elem {
-                DataType::List(index) => {
-                    // If already marked true don't need to revisit
-                    if  !marked_lists[index.clone()] {
-                        marked_lists[index.clone()] = true;
-                        let list = self.lists.get(index.clone()).unwrap();
-                        self.mark_all_reachable_from_list(list, marked_lists, marked_records);
-                    }
-                },
-                DataType::NamelessRecord(index) => {
-                    // If already marked true don't need to revisit
-                    if  !marked_records[index.clone()] {
-                        marked_records[index.clone()] = true;
-                        let record = self.nameless_records.get(index.clone()).unwrap();
-                        self.mark_all_reachable_from_record(record, marked_lists, marked_records);
-                    }
-                },
-                _ => {}
-            }
-        }
-    }
-
-    fn mark_all_reachable_from_record(&self, record: &HashMap<String, DataType>, marked_lists: &mut Vec<bool>, marked_records: &mut Vec<bool>) {
-        for (_, elem) in record.into_iter() {
-            match elem {
-                DataType::List(index) => {
-                    // If already marked true don't need to revisit
-                    if  !marked_lists[index.clone()] {
-                        marked_lists[index.clone()] = true;
-                        let list = self.lists.get(index.clone()).unwrap();
-                        self.mark_all_reachable_from_list(list, marked_lists, marked_records);
-                    }
-                },
-                DataType::NamelessRecord(index) => {
-                    // If already marked true don't need to revisit
-                    if  !marked_records[index.clone()] {
-                        marked_records[index.clone()] = true;
-                        let record = self.nameless_records.get(index.clone()).unwrap();
-                        self.mark_all_reachable_from_record(record, marked_lists, marked_records);
-                    }
-                },
-                _ => {}
-            }
-        }
-    }
-
-    fn find_root_objects(&self) -> (Vec<usize>, Vec<usize>) {
-        let mut root_lists: Vec<usize> = Vec::new();
-        let mut root_records: Vec<usize> = Vec::new();
-        for env in self.envs.iter() {
-            for (_, val) in env.into_iter() {
-                if let Some(data_type) = val {
-                    match data_type {
-                        DataType::List(index) => root_lists.push(index.clone()),
-                        DataType::NamelessRecord(index) => root_records.push(index.clone()),
-                        _ => {}
-                    }
-                }
-            }
-        }
-        (root_lists, root_records)
     }
 
     fn interpret(&mut self) {
