@@ -2,7 +2,8 @@ use pakhi::frontend::lexer::{tokenize, TokenKind};
 
 #[test]
 fn lexer_var_declare() {
-    let tokens = tokenize("নাম ল = ০;".chars().collect::<Vec<char>>());
+    let tokens = tokenize("নাম ল = ০;".chars().collect::<Vec<char>>(),
+                          "test.pakhi".to_string());
     assert_eq!(TokenKind::Var, tokens[0].kind);
     assert_eq!(TokenKind::Identifier, tokens[1].kind);
     assert_eq!(TokenKind::Equal, tokens[2].kind);
@@ -13,7 +14,8 @@ fn lexer_var_declare() {
 #[test]
 fn lexer_nameless_record_literal() {
     let tokens = tokenize(
-        r#"@ {"key" -> ১,}"#.chars().collect::<Vec<char>>());
+        r#"@ {"key" -> ১,}"#.chars().collect::<Vec<char>>(),
+        "test.pakhi".to_string());
     assert_eq!(TokenKind::At, tokens[0].kind);
     assert_eq!(TokenKind::CurlyBraceStart, tokens[1].kind);
     assert_eq!(TokenKind::String(String::from("key")), tokens[2].kind);
@@ -27,7 +29,8 @@ fn lexer_nameless_record_literal() {
 fn lexer_comment_block() {
     let tokens = tokenize("# this is a comment # \
                                           নাম ল = ০;\
-                                          #this is a second comment#".chars().collect::<Vec<char>>());
+                                          #this is a second comment#".chars().collect::<Vec<char>>(),
+                                "test.pakhi".to_string());
     assert_eq!(TokenKind::Comment, tokens[0].kind);
     assert_eq!(TokenKind::Var, tokens[1].kind);
     assert_eq!(TokenKind::Identifier, tokens[2].kind);

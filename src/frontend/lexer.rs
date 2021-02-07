@@ -5,6 +5,7 @@ pub struct Token {
     pub kind: TokenKind,
     pub lexeme: Vec<char>,
     pub line: u32,
+    pub src_file_path: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -54,7 +55,7 @@ pub enum TokenKind {
          // all previous tokens were consumed
 }
 
-pub fn tokenize(src: Vec<char>) -> Vec<Token> {
+pub fn tokenize(src: Vec<char>, src_file_path: String) -> Vec<Token> {
     let mut current_i = 0;
     let mut line = 1;
 
@@ -63,7 +64,7 @@ pub fn tokenize(src: Vec<char>) -> Vec<Token> {
     while current_i < src.len() {
         // c represents total chars consumed by token t
         // l represents total line consumed by token t
-        let (t, c, l) = consume(&src, current_i, line);
+        let (t, c, l) = consume(&src, current_i, line, src_file_path.clone());
         if let Some(token) = t {
             tokens.push(token);
         }
@@ -74,12 +75,13 @@ pub fn tokenize(src: Vec<char>) -> Vec<Token> {
         kind: TokenKind::EOT,
         lexeme: "".chars().collect(),
         line: 0,
+        src_file_path,
     });
 
     tokens
 }
 
-fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u32) {
+fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (Option<Token>, usize, u32) {
     let consumed_char: usize;
     let consumed_line: u32;
     let token: Token;
@@ -96,6 +98,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::Num(val),
                     lexeme: src[start..(start+consumed_char)].to_vec(),
                     line: line + consumed_line,
+                    src_file_path,
                 }
             } else {
                 // not a negative number, binary '-' operator or map operator '->' in record
@@ -108,6 +111,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                         kind: TokenKind::Map,
                         lexeme: src[start..(start+2)].to_vec(),
                         line,
+                        src_file_path,
                     }
                 } else {
                     // binary '-' operator
@@ -117,6 +121,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                         kind: TokenKind::Minus,
                         lexeme: src[start..(start+1)].to_vec(),
                         line,
+                        src_file_path,
                     }
                 }
             }
@@ -128,6 +133,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Plus,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '*' => {
@@ -137,6 +143,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Multiply,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '/' => {
@@ -146,6 +153,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Division,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '%' => {
@@ -155,6 +163,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Remainder,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '&' => {
@@ -164,6 +173,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::And,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '|' => {
@@ -173,6 +183,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Or,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '!' => {
@@ -183,6 +194,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::NotEqual,
                     lexeme: src[start..(start+2)].to_vec(),
                     line,
+                    src_file_path,
                 }
             } else {
                 consumed_char = 1;
@@ -191,6 +203,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::Not,
                     lexeme: src[start..(start+1)].to_vec(),
                     line,
+                    src_file_path,
                 }
             }
         },
@@ -201,6 +214,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::At,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '#' => {
@@ -211,6 +225,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Comment,
                 lexeme: src[start..(start+char_skipped)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         ';' => {
@@ -220,6 +235,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Semicolon,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         ',' => {
@@ -229,6 +245,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::Comma,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '"' => {
@@ -241,6 +258,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 // start + 1 for excluding first " and (start+consumed_char)-1 for excluding last "
                 lexeme: src[(start+1)..((start+consumed_char)-1)].to_vec(),
                 line: line + consumed_line,
+                src_file_path,
             }
         },
         '(' => {
@@ -250,6 +268,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::ParenStart,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         ')' => {
@@ -259,6 +278,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::ParenEnd,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '{' => {
@@ -268,6 +288,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::CurlyBraceStart,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '}' => {
@@ -277,6 +298,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::CurlyBraceEnd,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '[' => {
@@ -286,6 +308,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::SquareBraceStart,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         ']' => {
@@ -295,6 +318,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                 kind: TokenKind::SquareBraceEnd,
                 lexeme: src[start..(start+1)].to_vec(),
                 line,
+                src_file_path,
             }
         },
         '=' => {
@@ -305,6 +329,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::EqualEqual,
                     lexeme: src[start..(start+2)].to_vec(),
                     line,
+                    src_file_path,
                 }
             } else {
                 consumed_char = 1;
@@ -313,6 +338,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::Equal,
                     lexeme: src[start..(start+1)].to_vec(),
                     line,
+                    src_file_path,
                 }
             }
         },
@@ -324,6 +350,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::LessThanOrEqual,
                     lexeme: src[start..(start+2)].to_vec(),
                     line,
+                    src_file_path,
                 }
             } else {
                 consumed_char = 1;
@@ -332,6 +359,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::LessThan,
                     lexeme: src[start..(start+1)].to_vec(),
                     line,
+                    src_file_path,
                 }
             }
         },
@@ -343,6 +371,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::GreaterThanOrEqual,
                     lexeme: src[start..(start+2)].to_vec(),
                     line,
+                    src_file_path,
                 }
             } else {
                 consumed_char = 1;
@@ -351,6 +380,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
                     kind: TokenKind::GreaterThan,
                     lexeme: src[start..(start+1)].to_vec(),
                     line,
+                    src_file_path,
                 }
             }
         },
@@ -366,7 +396,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32) -> (Option<Token>, usize, u
         },
         _ => {
             // if nothing matches must be an identifier
-            let (t, consumed) = consume_identifier(src, start, line);
+            let (t, consumed) = consume_identifier(src, start, line, src_file_path);
 
             consumed_char = consumed;
             consumed_line = 0;
@@ -443,7 +473,7 @@ fn consume_string(src: &Vec<char>, start: usize) -> (String, usize) {
     (val, consumed)
 }
 
-fn consume_identifier(src: &Vec<char>, start: usize, line: u32) -> (Token, usize) {
+fn consume_identifier(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (Token, usize) {
     let mut consumed = 0;
     let mut char_vec: Vec<char>= Vec::new();
 
@@ -454,12 +484,13 @@ fn consume_identifier(src: &Vec<char>, start: usize, line: u32) -> (Token, usize
         i +=1;
     }
 
-    let token = match keyword(&char_vec, line) {
+    let token = match keyword(&char_vec, line, src_file_path.clone()) {
         Some(t) => t,
         None => Token {
             kind: TokenKind::Identifier,
             lexeme: src[start..(start+consumed)].to_vec(),
             line,
+            src_file_path,
         }
     };
 
@@ -473,7 +504,7 @@ fn is_valid_identifier_char(c: char) -> bool {
     !c.is_ascii_whitespace() && !c.is_ascii_punctuation() && !c.is_ascii_control()
 }
 
-fn keyword(char_vec: &Vec<char>, line: u32) -> Option<Token> {
+fn keyword(char_vec: &Vec<char>, line: u32, src_file_path: String) -> Option<Token> {
     let mut keyword_map: HashMap<Vec<char>, TokenKind> = HashMap::new();
     keyword_map.insert("নাম".chars().collect(), TokenKind::Var);
     keyword_map.insert("যদি".chars().collect(), TokenKind::If);
@@ -494,6 +525,7 @@ fn keyword(char_vec: &Vec<char>, line: u32) -> Option<Token> {
             kind: token_kind,
             lexeme: char_vec.to_vec(),
             line,
+            src_file_path,
         }),
         None => None,
     }
@@ -599,27 +631,27 @@ mod tests {
     #[test]
     fn lexer_keyword_test_1() {
         let kword: Vec<char> = "ফাং".chars().collect();
-        let t = keyword(&kword, 0).unwrap();
+        let t = keyword(&kword, 0, "test.pakhi".to_string()).unwrap();
         assert_eq!(TokenKind::Function, t.kind);
     }
 
     #[test]
     fn lexer_keyword_test_2() {
         let kword: Vec<char> = "নাম".chars().collect();
-        let t = keyword(&kword, 0).unwrap();
+        let t = keyword(&kword, 0, "test.pakhi".to_string()).unwrap();
         assert_eq!(TokenKind::Var, t.kind);
     }
 
     #[test]
     fn lexer_keyword_test_3() {
         let kword: Vec<char> = "লুপ".chars().collect();
-        let t = keyword(&kword, 0).unwrap();
+        let t = keyword(&kword, 0, "test.pakhi".to_string()).unwrap();
         assert_eq!(TokenKind::Loop, t.kind);
     }
 
     #[test]
     fn lexer_keyword_test_4() {
         let kword: Vec<char> = "abc".chars().collect();
-        assert!(keyword(&kword, 0).is_none());
+        assert!(keyword(&kword, 0, "test.pakhi".to_string()).is_none());
     }
 }

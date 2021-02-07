@@ -556,6 +556,9 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
         self.skip_block();
 
         // consuming return statement
+        if self.current >= self.statements.len() {
+            panic!("Unexpected error at function call");
+        }
         if let parser::Stmt::Return(_) = self.statements[self.current].clone() {
            self.current += 1;
         } else {
@@ -597,7 +600,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     fn skip_block(&mut self) {
         let mut stack: Vec<char> = Vec::new();
 
-        loop {
+        while self.current < self.statements.len() {
             if self.statements[self.current] == parser::Stmt::BlockStart {
                 stack.push('{');
             }

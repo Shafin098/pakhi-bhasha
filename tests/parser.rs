@@ -8,7 +8,8 @@ use pakhi::frontend::parser::Expr::AddOrSub;
 
 #[test]
 fn parse_test_primary_num() {
-    let tokens = lexer::tokenize("দেখাও ৫৩.৬;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ৫৩.৬;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Primary(Primary::Num(53.6)));
     assert_eq!(expected_ast, ast[0]);
@@ -16,7 +17,8 @@ fn parse_test_primary_num() {
 
 #[test]
 fn parse_test_binary_addition() {
-    let tokens = lexer::tokenize("দেখাও -৫৩.৬ + ৬;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও -৫৩.৬ + ৬;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
         operator: TokenKind::Plus,
@@ -28,7 +30,8 @@ fn parse_test_binary_addition() {
 
 #[test]
 fn parse_test_primary_string() {
-    let tokens = lexer::tokenize("দেখাও \"this is a test\";".chars().collect());
+    let tokens = lexer::tokenize("দেখাও \"this is a test\";".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Primary(Primary::String(String::from("this is a test"))));
     assert_eq!(expected_ast, ast[0]);
@@ -36,7 +39,8 @@ fn parse_test_primary_string() {
 
 #[test]
 fn parse_test_print_expr() {
-    let tokens = lexer::tokenize("দেখাও ১ + ৩ * ২;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ১ + ৩ * ২;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::AddOrSub(Binary {
         operator: TokenKind::Plus,
@@ -52,7 +56,8 @@ fn parse_test_print_expr() {
 
 #[test]
 fn parse_test_print_equality() {
-    let tokens = lexer::tokenize("দেখাও ১ == ১;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ১ == ১;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Equality(Binary {
         operator: TokenKind::EqualEqual,
@@ -65,7 +70,8 @@ fn parse_test_print_equality() {
 
 #[test]
 fn parse_test_print_not_equal() {
-    let tokens = lexer::tokenize("দেখাও ১ != ১;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ১ != ১;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Equality(Binary {
         operator: TokenKind::NotEqual,
@@ -78,7 +84,8 @@ fn parse_test_print_not_equal() {
 
 #[test]
 fn parse_test_print_comparison_less() {
-    let tokens = lexer::tokenize("দেখাও ১ < ১;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ১ < ১;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Comparison(Binary {
         operator: TokenKind::LessThan,
@@ -91,7 +98,8 @@ fn parse_test_print_comparison_less() {
 
 #[test]
 fn parse_test_comaprison_greater() {
-    let tokens = lexer::tokenize("দেখাও ১ > ১;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ১ > ১;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Comparison(Binary {
         operator: TokenKind::GreaterThan,
@@ -104,7 +112,8 @@ fn parse_test_comaprison_greater() {
 
 #[test]
 fn parse_test_comparison_less_or_equla() {
-    let tokens = lexer::tokenize("দেখাও ১ <= ১;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ১ <= ১;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Comparison(Binary {
         operator: TokenKind::LessThanOrEqual,
@@ -117,7 +126,8 @@ fn parse_test_comparison_less_or_equla() {
 
 #[test]
 fn parse_test_comaprison_greater_or_equla() {
-    let tokens = lexer::tokenize("দেখাও ১ >= ১;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও ১ >= ১;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Comparison(Binary {
         operator: TokenKind::GreaterThanOrEqual,
@@ -130,7 +140,8 @@ fn parse_test_comaprison_greater_or_equla() {
 
 #[test]
 fn parse_test_print_logical_and() {
-    let tokens = lexer::tokenize("দেখাও সত্য & মিথ্যা;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও সত্য & মিথ্যা;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::And(And {
         left: Box::from(Expr::Primary(Primary::Bool(true))),
@@ -142,7 +153,8 @@ fn parse_test_print_logical_and() {
 
 #[test]
 fn parse_test_print_logical_or() {
-    let tokens = lexer::tokenize("দেখাও সত্য | মিথ্যা;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও সত্য | মিথ্যা;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Or(Or {
         left: Box::from(Expr::Primary(Primary::Bool(true))),
@@ -154,7 +166,8 @@ fn parse_test_print_logical_or() {
 
 #[test]
 fn parse_test_print_logical_not() {
-    let tokens = lexer::tokenize("দেখাও !সত্য;".chars().collect());
+    let tokens = lexer::tokenize("দেখাও !সত্য;".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Print(Expr::Unary(Unary {
         operator: TokenKind::Not,
@@ -166,7 +179,8 @@ fn parse_test_print_logical_not() {
 
 #[test]
 fn parse_test_assignment_string() {
-    let tokens = lexer::tokenize("নাম ল = \"red\";".chars().collect());
+    let tokens = lexer::tokenize("নাম ল = \"red\";".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Assignment(Assignment {
         kind: AssignmentKind::FirstAssignment,
@@ -174,6 +188,7 @@ fn parse_test_assignment_string() {
             kind: TokenKind::Identifier,
             lexeme: vec!['ল'],
             line: 1,
+            src_file_path: "test.pakhi".to_string(),
         },
         indexes: Vec::new(),
         init_value: Some(Expr::Primary(Primary::String("red".to_string()))),
@@ -184,7 +199,8 @@ fn parse_test_assignment_string() {
 
 #[test]
 fn parse_test_re_assignment_string() {
-    let tokens = lexer::tokenize("ল = \"red\";".chars().collect());
+    let tokens = lexer::tokenize("ল = \"red\";".chars().collect(),
+                                 "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Assignment(Assignment {
         kind: AssignmentKind::Reassignment,
@@ -192,6 +208,7 @@ fn parse_test_re_assignment_string() {
             kind: TokenKind::Identifier,
             lexeme: vec!['ল'],
             line: 1,
+            src_file_path: "test.pakhi".to_string(),
         },
         indexes: Vec::new(),
         init_value: Some(Expr::Primary(Primary::String("red".to_string()))),
@@ -206,7 +223,8 @@ fn parse_test_namesless_record_literal() {
                                                                 "key" -> ১,
                                                                 "key_2" -> "string",
                                                                 "key" -> ১ + ১,
-                                                            };"#.chars().collect());
+                                                            };"#.chars().collect(),
+                                                        "test.pakhi".to_string());
     let ast = parse(String::from("test.pakhi"), tokens);
     let expected_ast = Stmt::Assignment(
         Assignment {
@@ -215,6 +233,7 @@ fn parse_test_namesless_record_literal() {
                 kind: Identifier,
                 lexeme: vec!['ক'],
                 line: 1,
+                src_file_path: "test.pakhi".to_string(),
             },
             indexes: vec![],
             init_value: Some(
