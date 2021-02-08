@@ -1,7 +1,8 @@
 #[derive(Debug)]
 pub enum PakhiErr {
     // Every tuple is (line_number, file_path, err_message)
-    SyntaxError(usize, String, String),
-    TypeError(usize, String, String),
-    RuntimeError(usize, String, String),
+    SyntaxError(u32, String, String),
+    TypeError(u32, String, String),
+    RuntimeError(u32, String, String),
+    UnexpectedError(String), // Here only string will contain error message
 }

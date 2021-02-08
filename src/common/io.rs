@@ -1,3 +1,5 @@
+use crate::common::pakhi_error::PakhiErr;
+
 pub trait IO {
     fn new() -> Self;
     fn print(&mut self, m: &str);
@@ -9,6 +11,7 @@ pub trait IO {
             Err(e) => Err(e)
         }
     }
+    fn panic(&mut self, err: PakhiErr);
 }
 
 pub struct RealIO;
@@ -29,6 +32,30 @@ impl IO for RealIO {
     fn error(&mut self, m: &str) {
         eprintln!("{}", m);
         panic!();
+    }
+
+    fn panic(&mut self, err: PakhiErr) {
+        match err {
+            PakhiErr::SyntaxError(line, file_name, err_message) => {
+                eprintln!("SyntaxError: {}", err_message);
+                eprintln!("    at file: {}, line: {}", file_name, line);
+                std::process::exit(1);
+            },
+            PakhiErr::RuntimeError(line, file_name, err_message) => {
+                eprintln!("RuntimeError: {}", err_message);
+                eprintln!("    at file: {}, line: {}", file_name, line);
+                std::process::exit(1);
+            },
+            PakhiErr::TypeError(line, file_name, err_message) => {
+                eprintln!("TypeError: {}", err_message);
+                eprintln!("    at file: {}, line: {}", file_name, line);
+                std::process::exit(1);
+            },
+            PakhiErr::UnexpectedError(err_message) => {
+                eprintln!("UnexpectedError: {}", err_message);
+                std::process::exit(1);
+            }
+        }
     }
 }
 
@@ -103,5 +130,9 @@ impl IO for MockIO {
     fn error(&mut self, m: &str) {
         self.error.push(String::from(m));
         self.op_order.push(String::from("error"));
+    }
+
+    fn panic(&mut self, err: PakhiErr) {
+
     }
 }

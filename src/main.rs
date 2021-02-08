@@ -7,7 +7,9 @@ fn main() {
     match main_module_path {
         Ok(path) => {
             let mut io = RealIO::new();
-            start_pakhi(path, &mut io);
+            if let Err(err) = start_pakhi(path, &mut io) {
+                io.panic(err);
+            }
         },
         Err(e) => eprintln!("Err: {}", e),
     }
