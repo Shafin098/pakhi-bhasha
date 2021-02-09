@@ -7,7 +7,10 @@ fn src_to_ast(src_lines: Vec<&str>) -> Vec<Stmt> {
     let src: String = src_lines.join("\n");
     let src_chars: Vec<char> = src.chars().collect();
     let tokens = lexer::tokenize(src_chars, "test.pakhi".to_string());
-    parser::parse("test.pakhi".to_string(), tokens)
+    match parser::parse("test.pakhi".to_string(), tokens) {
+        Ok(ast) => return ast,
+        Err(e) => panic!("{:?}", e),
+    }
 }
 
 fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) {

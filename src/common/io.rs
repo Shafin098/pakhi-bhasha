@@ -4,7 +4,6 @@ pub trait IO {
     fn new() -> Self;
     fn print(&mut self, m: &str);
     fn println(&mut self, m: &str);
-    fn error(&mut self, m: &str);
     fn read_src_code_from_file(&mut self, file_path: &str) -> Result<String, std::io::Error> {
         match std::fs::read_to_string(file_path) {
             Ok(src_string) => Ok(src_string),
@@ -27,11 +26,6 @@ impl IO for RealIO {
 
     fn println(&mut self, m: &str) {
         println!("{}", m);
-    }
-
-    fn error(&mut self, m: &str) {
-        eprintln!("{}", m);
-        panic!();
     }
 
     fn panic(&mut self, err: PakhiErr) {
@@ -63,11 +57,11 @@ impl IO for RealIO {
 pub struct MockIO {
     print: Vec<String>,
     println: Vec<String>,
-    error: Vec<String>,
+    panic: Vec<PakhiErr>,
     op_order: Vec<String>,
     expected_print: Vec<String>,
     expected_println: Vec<String>,
-    expected_error: Vec<String>,
+    expected_panic: Vec<PakhiErr>,
     expected_op_order: Vec<String>,
 }
 
@@ -82,9 +76,9 @@ impl MockIO {
         self.expected_op_order.push(String::from("println"));
     }
 
-    pub fn expect_error(&mut self, m: &str) {
-        self.expected_error.push(String::from(m));
-        self.expected_op_order.push(String::from("error"));
+    pub fn expect_panic(&mut self, err: PakhiErr) {
+        self.expected_panic.push(err);
+        self.expected_op_order.push(String::from("panic"));
     }
 
     pub fn assert_all_true(&self) {
@@ -94,8 +88,8 @@ impl MockIO {
         for (i, _)in self.println.iter().enumerate() {
             assert_eq!(self.expected_println[i], self.println[i])
         }
-        for (i, _)in self.error.iter().enumerate() {
-            assert_eq!(self.expected_error[i], self.error[i])
+        for (i, _)in self.panic.iter().enumerate() {
+            assert_eq!(self.expected_panic[i], self.panic[i])
         }
         for (i, _)in self.op_order.iter().enumerate() {
             assert_eq!(self.expected_op_order[i], self.op_order[i])
@@ -108,11 +102,11 @@ impl IO for MockIO {
         MockIO {
             print: Vec::new(),
             println: Vec::new(),
-            error: Vec::new(),
+            panic: Vec::new(),
             op_order: Vec::new(),
             expected_print: Vec::new(),
             expected_println: Vec::new(),
-            expected_error: Vec::new(),
+            expected_panic: Vec::new(),
             expected_op_order: Vec::new(),
         }
     }
@@ -127,12 +121,8 @@ impl IO for MockIO {
         self.op_order.push(String::from("println"));
     }
 
-    fn error(&mut self, m: &str) {
-        self.error.push(String::from(m));
-        self.op_order.push(String::from("error"));
-    }
-
     fn panic(&mut self, err: PakhiErr) {
-
+        self.panic.push(err);
+        self.op_order.push("panic".to_string());
     }
 }

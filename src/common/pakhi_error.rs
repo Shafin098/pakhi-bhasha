@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum PakhiErr {
     // Every tuple is (line_number, file_path, err_message)
     SyntaxError(u32, String, String),

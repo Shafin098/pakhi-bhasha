@@ -21,7 +21,11 @@ fn create_file(file_name: &str, lines: Vec<&str>) {
 fn run_module(module_name: &str, mut io: MockIO) {
     let root_path = std::env::current_dir().unwrap().join("__tmp");
     let module_path = root_path.join(module_name);
-    pakhi::start_pakhi(module_path.to_str().unwrap().parse().unwrap(), &mut io);
+    let pakhi_result = pakhi::start_pakhi(module_path.to_str().unwrap().parse().unwrap(), &mut io);
+    match pakhi_result {
+        Ok(_) => {},
+        Err(e) => panic!("{:?}", e),
+    }
     clean_test_tmp_dir();
     io.assert_all_true();
 }
