@@ -11,20 +11,22 @@ use crate::common::pakhi_error::PakhiErr;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
-    Print(Expr),
-    PrintNoEOL(Expr),
-    Assignment(Assignment),
-    Expression(Expr),
-    BlockStart,
-    BlockEnd,
-    FuncDef,
-    Return(Expr),
-    If(Expr),
-    Loop,
-    Continue,
-    Break,
-    Else,
-    EOS,    // represents end of statement, only needed for interpreting to indicate
+    // Here u32 and String will contain line number and file_name
+    // so that user can locate error properly in their source file
+    Print(Expr, u32, String),
+    PrintNoEOL(Expr, u32, String),
+    Assignment(Assignment, u32, String),
+    Expression(Expr, u32, String),
+    BlockStart(u32, String),
+    BlockEnd(u32, String),
+    FuncDef(u32, String),
+    Return(Expr, u32, String),
+    If(Expr, u32, String),
+    Loop(u32, String),
+    Continue(u32, String),
+    Break(u32, String),
+    Else(u32, String),
+    EOS(u32, String),    // represents end of statement, only needed for interpreting to indicate
             // all previous statements were consumed
 }
 
@@ -45,16 +47,18 @@ pub enum AssignmentKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
-    Indexing(Box<Expr>, Box<Expr>),
-    Or(Or),
-    And(And),
-    Equality(Binary),
-    Comparison(Binary),
-    AddOrSub(Binary),
-    MulOrDivOrRemainder(Binary),
-    Unary(Unary),
-    Call(FunctionCall),
-    Primary(Primary),
+    // Here u32 and String will contain line number and file_name
+    // so that user can locate error properly in their source file
+    Indexing(Box<Expr>, Box<Expr>, u32, String),
+    Or(Or, u32, String),
+    And(And, u32, String),
+    Equality(Binary, u32, String),
+    Comparison(Binary, u32, String),
+    AddOrSub(Binary, u32, String),
+    MulOrDivOrRemainder(Binary, u32, String),
+    Unary(Unary, u32, String),
+    Call(FunctionCall, u32, String),
+    Primary(Primary, u32, String),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -140,7 +144,7 @@ impl Parser {
         let mut statements: Vec<Stmt> = Vec::new();
         loop {
             let s = self.statements()?;
-            if let Stmt::EOS = s {
+            if let Stmt::EOS(_, _) = s {
                 statements.push(s);
                 break;
             }
@@ -163,6 +167,8 @@ impl Parser {
     }
 
     fn statements(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
+
         match self.tokens[self.current].kind {
             TokenKind::Print => self.print_stmt(),
             TokenKind::PrintNoEOL => self.print_no_newline_stmt(),
@@ -180,7 +186,7 @@ impl Parser {
             TokenKind::At => todo!(),
             TokenKind::Comment => self.comment_block(),
             TokenKind::Import => self.module_import_stmt(),
-            TokenKind::EOT => Ok(Stmt::EOS),
+            TokenKind::EOT => Ok(Stmt::EOS(line, file_name)),
              _ => {
                  let (line, file_name) = self.extract_err_meta()?;
                  return Err(PakhiErr::SyntaxError(line, file_name,
@@ -467,22 +473,26 @@ impl Parser {
     }
 
     fn print_no_newline_stmt(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
+
         // consuming token
         self.current += 1;
         let expr = self.expression()?;
         //consuming last ';' of print statement
         self.current += 1;
 
-        return Ok(Stmt::PrintNoEOL(expr));
+        return Ok(Stmt::PrintNoEOL(expr, line, file_name));
     }
 
     fn re_assignment_or_func_call_stmt(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
+
         // probably array indexing after function call won't work
         if self.tokens[self.current + 1].kind == TokenKind::ParenStart {
             // assuming its a function call statement
             let expr = self.expression()?;
 
-            return Ok(Stmt::Expression(expr));
+            return Ok(Stmt::Expression(expr, line, file_name));
         }
         // if next token is not paren assuming it's a reassignment statement, or expression
         // statement which ony has identifier
@@ -491,6 +501,8 @@ impl Parser {
     }
 
     fn assignment_stmt(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
+
         // consuming var token
         self.current += 1;
         if self.tokens[self.current].kind != TokenKind::Identifier {
@@ -510,7 +522,7 @@ impl Parser {
                 var_name,
                 indexes: Vec::new(),
                 init_value: None,
-            });
+            }, line, file_name);
         } else {
             // consuming '=' token
             self.current += 1;
@@ -522,7 +534,7 @@ impl Parser {
                 var_name,
                 indexes: Vec::new(),
                 init_value: Some(expr),
-            });
+            }, line, file_name);
         }
 
         if self.tokens[self.current].kind != TokenKind::Semicolon {
@@ -542,6 +554,8 @@ impl Parser {
     }
 
     fn re_assignment_stmt(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
+
         if self.tokens[self.current+1].kind != TokenKind::Equal &&
             self.tokens[self.current+1].kind != TokenKind::SquareBraceStart {
             // not a reassignment, only expression statement;
@@ -556,7 +570,7 @@ impl Parser {
         let mut indexes: Vec<Expr> = Vec::new();
         while self.tokens[self.current].kind != TokenKind::Equal {
             let index = self.expression()?;
-            if let Expr::Primary(Primary::List(_)) = index {
+            if let Expr::Primary(Primary::List(_), _, _) = index {
                 indexes.push(index);
             } else {
                 let (line, file_name) = self.extract_err_meta()?;
@@ -581,39 +595,44 @@ impl Parser {
             var_name,
             indexes,
             init_value: Some(expr),
-        });
+        }, line, file_name);
 
         return Ok(stmt);
     }
 
     // expression need to be wrapped in expression stmt because interpreter only accepts vec of stmts
     fn expression_stmt(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
         let expr = self.expression()?;
-        return Ok(Stmt::Expression(expr));
+        return Ok(Stmt::Expression(expr, line, file_name));
     }
 
     fn print_stmt(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
+
         // consuming print token
         self.current += 1;
         let expr = self.expression()?;
         //consuming last ';' of print statement
         self.current += 1;
 
-        return Ok(Stmt::Print(expr));
+        return Ok(Stmt::Print(expr, line, file_name));
     }
 
     fn func_def_stmt(&mut self) -> Stmt {
         // consuming function token
         self.current += 1;
-
-        Stmt::FuncDef
+        let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+        Stmt::FuncDef(line, file_name)
     }
 
     fn return_stmt(&mut self) -> Result<Stmt, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
+
         // consuming return token
         self.current += 1;
 
-        let mut return_value = Expr::Primary(Primary::Nil);
+        let mut return_value = Expr::Primary(Primary::Nil, line, file_name.clone());
         if self.tokens[self.current].kind != TokenKind::Semicolon {
             // if not semicolon function return a value
             return_value = self.expression()?;
@@ -621,42 +640,42 @@ impl Parser {
 
         //consuming ; token
         self.current += 1;
-        return Ok(Stmt::Return(return_value));
+        return Ok(Stmt::Return(return_value, line, file_name));
     }
 
     fn block_start(&mut self) -> Stmt {
         // consuming { token
         self.current += 1;
-
-        Stmt::BlockStart
+        let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+        Stmt::BlockStart(line, file_name)
     }
 
     fn block_end(&mut self) -> Stmt {
         // consuming } token
         self.current += 1;
-
-        Stmt::BlockEnd
+        let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+        Stmt::BlockEnd(line, file_name)
     }
 
     fn loop_stmt(&mut self) -> Stmt {
         // consuming loop token
         self.current += 1;
-
-        Stmt::Loop
+        let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+        Stmt::Loop(line, file_name)
     }
 
     fn continue_stmt(&mut self) -> Stmt {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
         // consuming loop token
         self.current += 2;
-
-        Stmt::Continue
+        Stmt::Continue(line, file_name)
     }
 
     fn break_stmt(&mut self) -> Stmt {
+        let (line, file_name) = self.get_token_line_file_name(self.current)?;
         // consuming break and ; token
         self.current += 2;
-
-        Stmt::Break
+        Stmt::Break(line, file_name)
     }
 
     fn if_statement(&mut self) -> Result<Stmt, PakhiErr> {
@@ -665,14 +684,15 @@ impl Parser {
 
         let condition = self.expression()?;
 
-        return Ok(Stmt::If(condition));
+        let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+        return Ok(Stmt::If(condition, line, file_name));
     }
 
     fn else_statement(&mut self) -> Stmt {
         //consuming else token
         self.current += 1;
-
-        Stmt::Else
+        let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+        Stmt::Else(line, file_name)
     }
 
     fn expression(&mut self) -> Result<Expr, PakhiErr> {
@@ -685,10 +705,12 @@ impl Parser {
         while self.tokens[self.current].kind == TokenKind::Or {
             self.current += 1;
             let right = self.and()?;
+
+            let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
             expr = Expr::Or(Or {
                 left: Box::new(expr),
                 right: Box::new(right),
-            })
+            }, line, file_name)
         }
 
         return Ok(expr);
@@ -700,10 +722,12 @@ impl Parser {
         while self.tokens[self.current].kind == TokenKind::And {
             self.current += 1;
             let right = self.equality()?;
+
+            let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
             expr = Expr::And(And {
                 left: Box::new(expr),
                 right: Box::new(right),
-            })
+            }, line, file_name)
         }
 
         return Ok(expr);
@@ -718,11 +742,13 @@ impl Parser {
             let operator = self.tokens[self.current].kind.clone();
             self.current += 1;
             let right = self.comparison()?;
+
+            let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
             expr = Expr::Equality(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            })
+            }, line, file_name)
         }
 
         return Ok(expr);
@@ -739,11 +765,13 @@ impl Parser {
             let operator = self.tokens[self.current].kind.clone();
             self.current += 1;
             let right = self.addition()?;
+
+            let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
             expr = Expr::Comparison(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            })
+            }, line, file_name)
         }
 
         return Ok(expr);
@@ -758,11 +786,13 @@ impl Parser {
             let operator = self.tokens[self.current].kind.clone();
             self.current += 1;
             let right = self.multiplication()?;
+
+            let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
             expr = Expr::AddOrSub(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            })
+            }, line, file_name)
         }
 
         return Ok(expr);
@@ -778,11 +808,12 @@ impl Parser {
             let operator = self.tokens[self.current].kind.clone();
             self.current += 1;
             let right = self.unary()?;
+            let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
             expr = Expr::MulOrDivOrRemainder(Binary {
                 left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            })
+            }, line, file_name)
         }
 
         return Ok(expr);
@@ -793,12 +824,13 @@ impl Parser {
             self.tokens[self.current].kind == TokenKind::Minus
         {
             let operator = self.tokens[self.current].kind.clone();
+            let (line, file_name) = self.get_token_line_file_name(self.current)?;
             self.current += 1;
             let right = self.unary()?;
             let expr = Expr::Unary(Unary {
                 operator,
                 right: Box::new(right),
-            });
+            }, line, file_name);
 
             return Ok(expr);
         }
@@ -806,6 +838,8 @@ impl Parser {
     }
 
     fn finish_call(&mut self, calle: Expr) -> Result<Expr, PakhiErr> {
+        let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+
         let mut arguments: Vec<Expr> = Vec::new();
 
         if self.tokens[self.current].kind != TokenKind::ParenEnd {
@@ -829,7 +863,7 @@ impl Parser {
         let expr = Expr::Call(FunctionCall {
             expr: Box::new(calle),
             arguments,
-        });
+        }, line, file_name);
         return Ok(expr);
     }
 
@@ -853,26 +887,34 @@ impl Parser {
         match self.tokens[self.current].kind.clone() {
             TokenKind::Bool(b) => {
                 self.current += 1;
-                return Ok(Expr::Primary(Primary::Bool(b)));
+                let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+                return Ok(Expr::Primary(Primary::Bool(b), line, file_name));
             },
             TokenKind::Num(n) => {
                 self.current += 1;
-                return Ok(Expr::Primary(Primary::Num(n)));
+                let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+                return Ok(Expr::Primary(Primary::Num(n), line, file_name));
             },
             TokenKind::String(s) => {
                 self.current += 1;
-                return Ok(Expr::Primary(Primary::String(s)));
+                let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
+                return Ok(Expr::Primary(Primary::String(s), line, file_name));
             },
             TokenKind::Identifier => {
+                let exprs_first_token_index = self.current;
+
                 // this is identifier or indexing expression
 
-                let mut expr = Expr::Primary(Primary::Var(self.tokens[self.current].clone()));
+                let (line, file_name) = self.get_token_line_file_name(exprs_first_token_index)?;
+                let mut expr = Expr::Primary(Primary::Var(self.tokens[self.current].clone()), line, file_name);
                 // consuming identifier token
                 self.current += 1;
 
-                // this loop works for multi-dimensional or single-dimensional indexing happening, for example
+                // this loop works for multi-dimensional or single-dimensional indexing, for example
                 // arr[1][2] or arr[1]
                 while self.tokens[self.current].kind == TokenKind::SquareBraceStart {
+                    let exprs_first_token_index = self.current;
+
                     // consuming [ token
                     self.current += 1;
                     let i = self.expression()?;
@@ -883,19 +925,26 @@ impl Parser {
                     // consuming ] token
                     self.current += 1;
 
-                    expr = Expr::Indexing(Box::new(expr), Box::new(i));
+                    let (line, file_name) = self.get_token_line_file_name(exprs_first_token_index)?;
+                    expr = Expr::Indexing(Box::new(expr), Box::new(i), line, file_name);
                 }
 
                 return Ok(expr);
             },
             TokenKind::ParenStart => {
+                let exprs_first_token_index = self.current;
+
                 self.current += 1;
                 let expr = self.expression()?;
                 // consuming parenEnd ')'
                 self.current += 1;
-                return  Ok(Expr::Primary(Primary::Group(Box::new(expr))));
+
+                let (line, file_name) = self.get_token_line_file_name(exprs_first_token_index)?;
+                return  Ok(Expr::Primary(Primary::Group(Box::new(expr)), line, file_name));
             },
             TokenKind::SquareBraceStart => {
+                let exprs_first_token_index = self.current;
+
                 // consuming [ Token
                 self.current += 1;
 
@@ -918,9 +967,12 @@ impl Parser {
                 //consuming ] Token
                 self.current += 1;
 
-                return Ok(Expr::Primary(Primary::List(array_literal)));
+                let (line, file_name) = self.get_token_line_file_name(exprs_first_token_index)?;
+                return Ok(Expr::Primary(Primary::List(array_literal), line, file_name));
             },
             TokenKind::At => {
+                let exprs_first_token_index = self.current;
+
                 // Iterates through all key-value pair and saves them in different vec. Then returns
                 // vec of key-value pair as tuples
 
@@ -968,7 +1020,8 @@ impl Parser {
                 //consuming } Token
                 self.current += 1;
 
-                return Ok(Expr::Primary(Primary::NamelessRecord((keys, values))));
+                let (line, file_name) = self.get_token_line_file_name(exprs_first_token_index)?;
+                return Ok(Expr::Primary(Primary::NamelessRecord((keys, values)), line, file_name));
             },
             _ => {
                 let (line, file_name) = self.extract_err_meta()?;
@@ -984,6 +1037,18 @@ impl Parser {
         } else {
             let line = self.tokens[self.current].line;
             let file_name = self.tokens[self.current].src_file_path.clone();
+            return Ok((line, file_name))
+        }
+    }
+
+    // This is only used to to include line number and file_name during creating stmt or expression
+    // so that error can be reported with line and file name during interpreting phase
+    fn get_token_line_file_name(&self, token_index: usize) -> Result<(u32, String), PakhiErr> {
+        if self.current >= self.tokens.len() {
+            return Err(PakhiErr::UnexpectedError("Unexpected error, probably missing ';'".to_string()));
+        } else {
+            let line = self.tokens[token_index].line;
+            let file_name = self.tokens[token_index].src_file_path.clone();
             return Ok((line, file_name))
         }
     }
