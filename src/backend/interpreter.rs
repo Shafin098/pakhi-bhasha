@@ -4,6 +4,7 @@ use crate::frontend::parser;
 use crate::frontend::lexer::{TokenKind, Token};
 use crate::backend::built_ins::BuiltInFunctionList;
 use crate::backend::mark_sweep;
+use crate::common::pakhi_error::PakhiErr;
 
 enum Index {
     List(usize),
@@ -77,7 +78,10 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     }
 
     pub fn run(&mut self) {
-        while self.statements[self.current] != parser::Stmt::EOS {
+        loop {
+            if let  parser::Stmt::EOS(_, _) = self.statements[self.current] {
+                break;
+            }
             self.interpret();
             if self.total_allocated_object_count >= 1000 {
                 let mut gc = mark_sweep::GC::new(&mut self.envs, &mut self.lists,
@@ -92,17 +96,17 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
 
     fn interpret(&mut self) {
         match self.statements[self.current].clone() {
-            parser::Stmt::Print(expr) => self.interpret_print_stmt(expr),
-            parser::Stmt::PrintNoEOL(expr) => self.interpret_print_no_eol(expr),
-            parser::Stmt::Assignment(assign_stmt) => self.interpret_assign_stmt(assign_stmt),
-            parser::Stmt::If(cond_expr) => self.interpret_if_stmt(cond_expr),
-            parser::Stmt::Else => self.interpret_else_stmt(),
-            parser::Stmt::FuncDef => self.interpret_funcdef(),
-            parser::Stmt::Expression(expr) => {
+            parser::Stmt::Print(expr, line, file_name) => self.interpret_print_stmt(expr),
+            parser::Stmt::PrintNoEOL(expr, line, file_name) => self.interpret_print_no_eol(expr),
+            parser::Stmt::Assignment(assign_stmt, line, file_name) => self.interpret_assign_stmt(assign_stmt),
+            parser::Stmt::If(cond_expr, line, file_name) => self.interpret_if_stmt(cond_expr),
+            parser::Stmt::Else(line, file_name) => self.interpret_else_stmt(),
+            parser::Stmt::FuncDef(line, file_name) => self.interpret_funcdef(),
+            parser::Stmt::Expression(expr, line, file_name) => {
                 self.interpret_expr(expr);
                 self.current += 1;
             },
-            parser::Stmt::Loop => {
+            parser::Stmt::Loop(line, file_name) => {
                 // consuming loop
                 self.current += 1;
 
@@ -110,7 +114,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
                 self.loops.push(LoopEnv { start: self.current, total_envs_at_loop_creation: self.envs.len()});
 
             },
-            parser::Stmt::Continue => {
+            parser::Stmt::Continue(line, file_name) => {
                 // destroying envs that was created inside loop
                 let last_loop_env_index = self.loops.len() - 1;
                 let total_envs_created_inside_loop = self.envs.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
@@ -122,7 +126,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
 
                 self.current = loop_start;
             },
-            parser::Stmt::Break => {
+            parser::Stmt::Break(line, file_name) => {
                 self.current += 1;
 
                 // len <= 0 means no new environment was made inside loop
@@ -140,11 +144,11 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
 
                 let mut stack: Vec<char> = Vec::new();
                 loop {
-                    if self.statements[self.current] == parser::Stmt::Loop {
+                    if let parser::Stmt::Loop(_, _) = self.statements[self.current] {
                         stack.push('{');
                     }
 
-                    if self.statements[self.current] == parser::Stmt::Continue {
+                    if let parser::Stmt::Continue(_, _) = self.statements[self.current] {
                         stack.pop();
                         if stack.is_empty() {
                             // consuming Stmt::Continue
@@ -157,12 +161,12 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
                     self.current += 1;
                 }
             },
-            parser::Stmt::BlockStart => {
+            parser::Stmt::BlockStart(line, file_name) => {
                 self.current += 1;
                 // creating new scope
                 self.envs.push(HashMap::new());
             },
-            parser::Stmt::BlockEnd => {
+            parser::Stmt::BlockEnd(line, file_name) => {
                 self.current += 1;
                 // BlockEnd means all statements in this blocks scope were interpreted
                 // so destroying scope created by Stmt::BlockStart
@@ -518,16 +522,19 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
         // consuming function definition statement
         self.current += 1;
 
-        if let parser::Stmt::Expression(parser::Expr::Call(function)) = self.statements[self.current].clone() {
+        if let parser::Stmt::Expression(parser::Expr::Call(function,
+                                                           line_f_call, file_name_f_call),
+                                        line, file_name) = self.statements[self.current].clone()
+        {
             match *function.expr {
-                parser::Expr::Primary(parser::Primary::Var(func_token)) => {
+                parser::Expr::Primary(parser::Primary::Var(func_token), line, file_name) => {
                     let func_name: String = func_token.lexeme.iter().collect();
                     let func_args = function.arguments;
                     let mut func_args_name: Vec<String> = Vec::new();
 
                     for arg_expr in func_args {
                         match arg_expr {
-                            parser::Expr::Primary(parser::Primary::Var(name_token)) => {
+                            parser::Expr::Primary(parser::Primary::Var(name_token), line, file_name) => {
                                 func_args_name.push(name_token.lexeme.iter().collect());
                             },
                             _ => panic!(),
@@ -559,7 +566,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
         if self.current >= self.statements.len() {
             panic!("Unexpected error at function call");
         }
-        if let parser::Stmt::Return(_) = self.statements[self.current].clone() {
+        if let parser::Stmt::Return(_, _, _) = self.statements[self.current].clone() {
            self.current += 1;
         } else {
             panic!("Return expected");
@@ -601,11 +608,11 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
         let mut stack: Vec<char> = Vec::new();
 
         while self.current < self.statements.len() {
-            if self.statements[self.current] == parser::Stmt::BlockStart {
+            if let parser::Stmt::BlockStart(_, _) = self.statements[self.current] {
                 stack.push('{');
             }
 
-            if self.statements[self.current] == parser::Stmt::BlockEnd {
+            if let parser::Stmt::BlockEnd(_, _) = self.statements[self.current] {
                 let previous = stack.pop();
                 match previous {
                     Some(_) => {
@@ -627,23 +634,24 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     fn skip_block_in_if(&mut self) {
         self.skip_block();
 
-        if self.statements[self.current] != parser::Stmt::Else {
-            self.previous_if_was_executed.pop();
+        match self.statements[self.current] {
+            parser::Stmt::Else(_, _) => {},
+            _ => { self.previous_if_was_executed.pop(); },
         }
     }
 
     fn interpret_expr(&mut self, expr: parser::Expr) -> DataType {
         match expr {
-            parser::Expr::Primary(p) => self.interpret_primary_expr(p),
-            parser::Expr::Unary(u_expr) => self.interpret_unary_expr(u_expr),
-            parser::Expr::And(and_expr) => self.interpret_and_expr(and_expr),
-            parser::Expr::Or(or_expr) => self.interpret_or_expr(or_expr),
-            parser::Expr::Equality(eq_expr) => self.interpret_eq_expr(eq_expr),
-            parser::Expr::Comparison(comp_expr) => self.interpret_comp_expr(comp_expr),
-            parser::Expr::AddOrSub(addsub_expr) => self.interpret_addsub_expr(addsub_expr),
-            parser::Expr::MulOrDivOrRemainder(muldiv_expr) => self.interpret_muldiv_remainder_expr(muldiv_expr),
-            parser::Expr::Call(function) => self.interpret_func_call_expr(function),
-            parser::Expr::Indexing(identifier, i) => self.interpret_indexing(identifier, i),
+            parser::Expr::Primary(p, line, file_name) => self.interpret_primary_expr(p),
+            parser::Expr::Unary(u_expr, line, file_name) => self.interpret_unary_expr(u_expr),
+            parser::Expr::And(and_expr, line, file_name) => self.interpret_and_expr(and_expr),
+            parser::Expr::Or(or_expr, line, file_name) => self.interpret_or_expr(or_expr),
+            parser::Expr::Equality(eq_expr, line, file_name) => self.interpret_eq_expr(eq_expr),
+            parser::Expr::Comparison(comp_expr, line, file_name) => self.interpret_comp_expr(comp_expr),
+            parser::Expr::AddOrSub(addsub_expr, line, file_name) => self.interpret_addsub_expr(addsub_expr),
+            parser::Expr::MulOrDivOrRemainder(muldiv_expr, line, file_name) => self.interpret_muldiv_remainder_expr(muldiv_expr),
+            parser::Expr::Call(function, line, file_name) => self.interpret_func_call_expr(function),
+            parser::Expr::Indexing(identifier, i, line, file_name) => self.interpret_indexing(identifier, i),
         }
     }
 
@@ -717,7 +725,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
         let env_count_before_fn_call = self.envs.len();
 
         match *f.expr.clone() {
-            parser::Expr::Primary(parser::Primary::Var(func_token)) => {
+            parser::Expr::Primary(parser::Primary::Var(func_token), line, file_name) => {
                 //  Checking if function is built-in
                 if self.built_in_functions.is_built_in(&func_token.lexeme) {
                     // Function is definitely built-in
@@ -759,18 +767,24 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
 
         // jumping to function start and starting executing statements in function body
 
-        assert_eq!(parser::Stmt::BlockStart, self.statements[self.current]);
+        match &self.statements[self.current] {
+            parser::Stmt::BlockStart(_, _) => {},
+            // TODO show file name and line number by matching all enum variant
+            _ => self.io.panic(PakhiErr::UnexpectedError("Expected '{'".to_string())),
+        }
+
+        // assert_eq!(parser::Stmt::BlockStart, self.statements[self.current]);
         // interpreting all statements inside function body
         // assuming self.current was set at function start
         loop {
-            if let parser::Stmt::Return(_) = self.statements[self.current].clone() {
+            if let parser::Stmt::Return(_, _, _) = self.statements[self.current].clone() {
                 break;
             } else {
                 self.interpret();
             }
         }
 
-        if let parser::Stmt::Return(expr) = self.statements[self.current].clone() {
+        if let parser::Stmt::Return(expr, line, file_name) = self.statements[self.current].clone() {
             let return_val = self.interpret_expr(expr);
             self.current = self.return_addrs.pop().unwrap();
 

@@ -174,14 +174,14 @@ impl Parser {
             TokenKind::PrintNoEOL => self.print_no_newline_stmt(),
             TokenKind::Var => self.assignment_stmt(),
             TokenKind::Identifier => self.re_assignment_or_func_call_stmt(),
-            TokenKind::CurlyBraceStart => Ok(self.block_start()),
-            TokenKind::CurlyBraceEnd => Ok(self.block_end()),
+            TokenKind::CurlyBraceStart => self.block_start(),
+            TokenKind::CurlyBraceEnd => self.block_end(),
             TokenKind::If => self.if_statement(),
-            TokenKind::Else => Ok(self.else_statement()),
-            TokenKind::Loop => Ok(self.loop_stmt()),
-            TokenKind::Continue => Ok(self.continue_stmt()),
-            TokenKind::Break => Ok(self.break_stmt()),
-            TokenKind::Function => Ok(self.func_def_stmt()),
+            TokenKind::Else => self.else_statement(),
+            TokenKind::Loop => self.loop_stmt(),
+            TokenKind::Continue => self.continue_stmt(),
+            TokenKind::Break => self.break_stmt(),
+            TokenKind::Function => self.func_def_stmt(),
             TokenKind::Return => self.return_stmt(),
             TokenKind::At => todo!(),
             TokenKind::Comment => self.comment_block(),
@@ -619,11 +619,11 @@ impl Parser {
         return Ok(Stmt::Print(expr, line, file_name));
     }
 
-    fn func_def_stmt(&mut self) -> Stmt {
+    fn func_def_stmt(&mut self) -> Result<Stmt, PakhiErr> {
         // consuming function token
         self.current += 1;
         let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
-        Stmt::FuncDef(line, file_name)
+        Ok(Stmt::FuncDef(line, file_name))
     }
 
     fn return_stmt(&mut self) -> Result<Stmt, PakhiErr> {
@@ -643,39 +643,39 @@ impl Parser {
         return Ok(Stmt::Return(return_value, line, file_name));
     }
 
-    fn block_start(&mut self) -> Stmt {
+    fn block_start(&mut self) -> Result<Stmt, PakhiErr> {
         // consuming { token
         self.current += 1;
         let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
-        Stmt::BlockStart(line, file_name)
+        Ok(Stmt::BlockStart(line, file_name))
     }
 
-    fn block_end(&mut self) -> Stmt {
+    fn block_end(&mut self) -> Result<Stmt, PakhiErr> {
         // consuming } token
         self.current += 1;
         let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
-        Stmt::BlockEnd(line, file_name)
+        Ok(Stmt::BlockEnd(line, file_name))
     }
 
-    fn loop_stmt(&mut self) -> Stmt {
+    fn loop_stmt(&mut self) -> Result<Stmt, PakhiErr> {
         // consuming loop token
         self.current += 1;
         let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
-        Stmt::Loop(line, file_name)
+        Ok(Stmt::Loop(line, file_name))
     }
 
-    fn continue_stmt(&mut self) -> Stmt {
+    fn continue_stmt(&mut self) -> Result<Stmt, PakhiErr> {
         let (line, file_name) = self.get_token_line_file_name(self.current)?;
         // consuming loop token
         self.current += 2;
-        Stmt::Continue(line, file_name)
+        Ok(Stmt::Continue(line, file_name))
     }
 
-    fn break_stmt(&mut self) -> Stmt {
+    fn break_stmt(&mut self) -> Result<Stmt, PakhiErr> {
         let (line, file_name) = self.get_token_line_file_name(self.current)?;
         // consuming break and ; token
         self.current += 2;
-        Stmt::Break(line, file_name)
+        Ok(Stmt::Break(line, file_name))
     }
 
     fn if_statement(&mut self) -> Result<Stmt, PakhiErr> {
@@ -688,11 +688,11 @@ impl Parser {
         return Ok(Stmt::If(condition, line, file_name));
     }
 
-    fn else_statement(&mut self) -> Stmt {
+    fn else_statement(&mut self) -> Result<Stmt, PakhiErr> {
         //consuming else token
         self.current += 1;
         let (line, file_name) = self.get_token_line_file_name(self.current - 1)?;
-        Stmt::Else(line, file_name)
+        Ok(Stmt::Else(line, file_name))
     }
 
     fn expression(&mut self) -> Result<Expr, PakhiErr> {
