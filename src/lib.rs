@@ -6,6 +6,7 @@ use crate::frontend::{lexer, parser};
 use crate::backend::interpreter;
 use crate::common::io::IO;
 use crate::common::pakhi_error::PakhiErr;
+use crate::common::pakhi_error::PakhiErr::UnexpectedError;
 
 pub fn start_pakhi<T: IO>(main_module_path: String, io: &mut T) -> Result<(), PakhiErr>{
     //println!("Source file: {}", filename);
@@ -21,9 +22,8 @@ pub fn start_pakhi<T: IO>(main_module_path: String, io: &mut T) -> Result<(), Pa
             // println!();
             // println!("Interpreter");
             // println!("____________");
-            interpreter::run(ast_tree);
+            return interpreter::run(ast_tree);
         },
-        Err(e) => eprintln!("{}", e),
+        Err(e) => return Err(UnexpectedError(format!("{}", e))),
     }
-    Ok(())
 }

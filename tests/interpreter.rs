@@ -2,6 +2,7 @@ use pakhi::frontend::{lexer, parser};
 use pakhi::frontend::parser::Stmt;
 use pakhi::common::io::{MockIO, IO};
 use pakhi::backend::interpreter::Interpreter;
+use pakhi::common::pakhi_error::PakhiErr;
 
 fn src_to_ast(src_lines: Vec<&str>) -> Vec<Stmt> {
     let src: String = src_lines.join("\n");
@@ -13,10 +14,11 @@ fn src_to_ast(src_lines: Vec<&str>) -> Vec<Stmt> {
     }
 }
 
-fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) {
+fn run_assert_all_true(ast: Vec<Stmt>, mut mock_io: MockIO) -> Result<(), PakhiErr> {
     let mut interpreter = Interpreter::new(ast, &mut mock_io);
-    interpreter.run();
+    interpreter.run()?;
     mock_io.assert_all_true();
+    Ok(())
 }
 
 #[test]
@@ -28,7 +30,9 @@ fn println_test() {
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("০");
     mock_io.expect_println("০");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -40,7 +44,9 @@ fn print_test() {
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_print("০");
     mock_io.expect_print("০");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -51,7 +57,9 @@ fn var_decl_num() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("১");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -62,7 +70,9 @@ fn var_decl_string() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("testing");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -73,7 +83,9 @@ fn list_single_dim_indexing() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("২");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -84,7 +96,9 @@ fn list_multi_dim_indexing() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("২");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -97,7 +111,9 @@ fn list_multi_dim_mixed_indexing() {
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("১");
     mock_io.expect_println("৪");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -109,7 +125,9 @@ fn built_in_fn_list_mutate_push() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৪");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -121,7 +139,9 @@ fn built_in_fn_list_push_middle() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৪");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -133,7 +153,9 @@ fn built_in_fn_list_pop_middle() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৩");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -147,7 +169,9 @@ fn built_in_fn_list_len() {
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৩");
     mock_io.expect_println("০");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -159,7 +183,9 @@ fn list_mutate() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৫");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -175,7 +201,9 @@ fn list_consistent() {
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("২০");
     mock_io.expect_println("৩০");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -193,7 +221,9 @@ fn nameless_record_literal() {
     mock_io.expect_print("২");
     mock_io.expect_print(",");
     mock_io.expect_println("}");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -208,7 +238,9 @@ fn nameless_record_single_dim_indexing() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("string");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -221,7 +253,9 @@ fn nameless_record_multi_dim_indexing() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("string");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -234,7 +268,9 @@ fn nameless_record_multi_dim_mixed_indexing() {
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৩");
     mock_io.expect_println("১");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -252,7 +288,9 @@ fn expression_unary() {
     mock_io.expect_println("১");
     mock_io.expect_println("মিথ্যা");
     mock_io.expect_println("সত্য");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -268,7 +306,9 @@ fn expression_and() {
     mock_io.expect_println("মিথ্যা");
     mock_io.expect_println("মিথ্যা");
     mock_io.expect_println("সত্য");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -284,7 +324,9 @@ fn expression_or() {
     mock_io.expect_println("সত্য");
     mock_io.expect_println("সত্য");
     mock_io.expect_println("সত্য");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -300,7 +342,9 @@ fn expression_equlaity() {
     mock_io.expect_println("সত্য");
     mock_io.expect_println("মিথ্যা");
     mock_io.expect_println("মিথ্যা");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -312,7 +356,9 @@ fn if_test_condition_true() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("০");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -326,7 +372,9 @@ fn if_test_condition_false() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("০");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -345,7 +393,9 @@ fn loop_test() {
     mock_io.expect_println("১");
     mock_io.expect_println("১");
     mock_io.expect_println("১");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -358,7 +408,9 @@ fn loop_no_new_env() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("১");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -371,7 +423,9 @@ fn function_decl_call() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("৪");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -392,11 +446,13 @@ fn recursive_function_call() {
     mock_io.expect_println("২");
     mock_io.expect_println("৩");
     mock_io.expect_println("৪");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
-#[should_panic(expected="এরর হয়েছে")]
+#[should_panic]
 fn built_in_fn_error() {
     let ast = src_to_ast(vec![
         r#"_এরর("এরর হয়েছে");"#,
@@ -404,7 +460,9 @@ fn built_in_fn_error() {
     ]);
 
     let mock_io: MockIO = MockIO::new();
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -417,7 +475,9 @@ fn built_in_fn_string_split() {
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("স্ট্রিং");
     mock_io.expect_println("স্প্লিট");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -428,7 +488,9 @@ fn built_in_fn_string_join() {
     ]);
     let mut mock_io: MockIO = MockIO::new();
     mock_io.expect_println("স্ট্রিং-স্প্লিট");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -453,7 +515,9 @@ fn built_in_fn_type() {
     mock_io.expect_println("_রেকর্ড");
     mock_io.expect_println("_শূন্য");
     mock_io.expect_println("_ফাং");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -473,7 +537,9 @@ fn built_in_fn_to_string() {
     mock_io.expect_println("সত্য");
     mock_io.expect_println("সত্য");
     mock_io.expect_println("সত্য");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
 
 #[test]
@@ -493,5 +559,7 @@ fn built_in_fn_to_num() {
     mock_io.expect_println("সত্য");
     mock_io.expect_println("সত্য");
     mock_io.expect_println("সত্য");
-    run_assert_all_true(ast, mock_io);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
 }
