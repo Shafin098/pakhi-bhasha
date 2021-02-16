@@ -384,7 +384,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (
                 }
             }
         },
-        ' '|'\r' => {
+        ' ' | '\r' | '\t' => {
             consumed_char = 1;
             consumed_line = 0;
             return (None, consumed_char, consumed_line);
