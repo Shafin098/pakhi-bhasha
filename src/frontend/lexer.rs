@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use crate::common::pakhi_error::PakhiErr::SyntaxError;
+use crate::common::pakhi_error::PakhiErr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Token {
@@ -55,7 +57,7 @@ pub enum TokenKind {
          // all previous tokens were consumed
 }
 
-pub fn tokenize(src: Vec<char>, src_file_path: String) -> Vec<Token> {
+pub fn tokenize(src: Vec<char>, src_file_path: String) -> Result<Vec<Token>, PakhiErr> {
     let mut current_i = 0;
     let mut line = 1;
 
@@ -64,7 +66,7 @@ pub fn tokenize(src: Vec<char>, src_file_path: String) -> Vec<Token> {
     while current_i < src.len() {
         // c represents total chars consumed by token t
         // l represents total line consumed by token t
-        let (t, c, l) = consume(&src, current_i, line, src_file_path.clone());
+        let (t, c, l) = consume(&src, current_i, line, src_file_path.clone())?;
         if let Some(token) = t {
             tokens.push(token);
         }
@@ -78,10 +80,10 @@ pub fn tokenize(src: Vec<char>, src_file_path: String) -> Vec<Token> {
         src_file_path,
     });
 
-    tokens
+    Ok(tokens)
 }
 
-fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (Option<Token>, usize, u32) {
+fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> Result<(Option<Token>, usize, u32), PakhiErr> {
     let consumed_char: usize;
     let consumed_line: u32;
     let token: Token;
@@ -90,7 +92,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (
         '-'|'০'|'১'|'২'|'৩'|'৪'|'৫'|'৬'|'৭'|'৮'|'৯' => {
             if src[start+1].is_numeric() || src[start].is_numeric() {
                 // negative number, unary '-' operator
-                let (val, consumed) = consume_num(src, start);
+                let (val, consumed) = consume_num(src, start, line, &src_file_path)?;
 
                 consumed_char = consumed;
                 consumed_line = 0;
@@ -218,7 +220,7 @@ fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (
             }
         },
         '#' => {
-            let (char_skipped, lines_skipped) = skip_comment_block(src, start);
+            let (char_skipped, lines_skipped) = skip_comment_block(src, start, line, &src_file_path)?;
             consumed_char = char_skipped;
             consumed_line = lines_skipped;
             token = Token {
@@ -387,12 +389,12 @@ fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (
         ' ' | '\r' | '\t' => {
             consumed_char = 1;
             consumed_line = 0;
-            return (None, consumed_char, consumed_line);
+            return Ok((None, consumed_char, consumed_line));
         },
         '\n' => {
             consumed_char = 1;
             consumed_line = 1;
-            return (None, consumed_char, consumed_line);
+            return Ok((None, consumed_char, consumed_line));
         },
         _ => {
             // if nothing matches must be an identifier
@@ -404,10 +406,10 @@ fn consume(src: &Vec<char>, start: usize, line: u32, src_file_path: String) -> (
         },
     }
 
-    (Some(token), consumed_char, consumed_line)
+    Ok((Some(token), consumed_char, consumed_line))
 }
 
-fn consume_num(src: &Vec<char>, start: usize) -> (f64, usize) {
+fn consume_num(src: &Vec<char>, start: usize, line: u32, src_file_path: &str) -> Result<(f64, usize), PakhiErr> {
     assert!(src[start].clone().is_numeric() || src[start] == '-');
 
     let mut consumed = 0;
@@ -428,7 +430,8 @@ fn consume_num(src: &Vec<char>, start: usize) -> (f64, usize) {
     while i < src.len() && (src[i].clone().is_numeric() || src[i] == '.') {
         if src[i] == '.' {
             if in_fractional_part {
-                panic!("Number is not properly formatted");
+                return Err(SyntaxError(line, src_file_path.to_string(),
+                                       "Number is not properly formatted".to_string()));
             }
             in_fractional_part = true;
             consumed += 1;
@@ -437,11 +440,11 @@ fn consume_num(src: &Vec<char>, start: usize) -> (f64, usize) {
         }
 
         if in_fractional_part {
-            fractional_val = (fractional_val * 10.0) + bn_digit_to_en_digit(src[i]);
+            fractional_val = (fractional_val * 10.0) + bn_digit_to_en_digit(src[i], line, src_file_path)?;
             consumed += 1;
             i += 1;
         } else {
-            val = (val * 10.0) + bn_digit_to_en_digit(src[i]);
+            val = (val * 10.0) + bn_digit_to_en_digit(src[i], line, src_file_path)?;
             consumed += 1;
             i += 1;
         }
@@ -449,9 +452,9 @@ fn consume_num(src: &Vec<char>, start: usize) -> (f64, usize) {
     fractional_val = fractional_val / (10_f64.powf(fractional_val.to_string().len() as f64));
 
     if is_negative {
-        ((val + fractional_val) * -1.0, consumed)
+        Ok(((val + fractional_val) * -1.0, consumed))
     } else {
-        ((val + fractional_val), consumed)
+        Ok(((val + fractional_val), consumed))
     }
 }
 
@@ -531,28 +534,30 @@ fn keyword(char_vec: &Vec<char>, line: u32, src_file_path: String) -> Option<Tok
     }
 }
 
-fn bn_digit_to_en_digit(digit: char) -> f64 {
+fn bn_digit_to_en_digit(digit: char, line: u32, src_file_path: &str) -> Result<f64, PakhiErr> {
     match digit {
-        '০' => 0.0,
-        '১' => 1.0,
-        '২' => 2.0,
-        '৩' => 3.0,
-        '৪' => 4.0,
-        '৫' => 5.0,
-        '৬' => 6.0,
-        '৭' => 7.0,
-        '৮' => 8.0,
-        '৯' => 9.0,
-        _ => panic!(),
+        '০' => return Ok(0.0),
+        '১' => return Ok(1.0),
+        '২' => return Ok(2.0),
+        '৩' => return Ok(3.0),
+        '৪' => return Ok(4.0),
+        '৫' => return Ok(5.0),
+        '৬' => return Ok(6.0),
+        '৭' => return Ok(7.0),
+        '৮' => return Ok(8.0),
+        '৯' => return Ok(9.0),
+        _ => {
+            return Err(SyntaxError(line, src_file_path.to_string(), format!("Cannot convert '{}' to bangla digit", digit)));
+        },
     }
 }
 
-fn skip_comment_block(src: &Vec<char>, start: usize) -> (usize, u32) {
+fn skip_comment_block(src: &Vec<char>, start: usize, line: u32, src_file_path: &str) -> Result<(usize, u32), PakhiErr> {
     let mut char_skipped: usize = 1;
     let mut lines_skipped: u32 = 0;
     while src[start + char_skipped] != '#' {
         if (start + char_skipped + 1) > src.len() - 1 {
-            panic!("Comment block wasn't closed");
+            return Err(SyntaxError(line, src_file_path.to_string(), "Comment block wasn't closed".to_string()))
         }
         if src[start + char_skipped] == '\\' && src[start + char_skipped + 1] == '#' {
             // if # escaped with \ skipping this #
@@ -567,7 +572,7 @@ fn skip_comment_block(src: &Vec<char>, start: usize) -> (usize, u32) {
     // skipping last #
     char_skipped += 1;
 
-    (char_skipped, lines_skipped)
+    Ok((char_skipped, lines_skipped))
 }
 
 #[cfg(test)]
@@ -578,7 +583,7 @@ mod tests {
     fn lexer_consume_num_test_1() {
         let digits_1 = vec!['২', '৪', '৫'];
 
-        let (val, consumed) = consume_num(&digits_1, 0);
+        let (val, consumed) = consume_num(&digits_1, 0, 1, "test.pakhi").unwrap();
         assert_eq!(245.0, val);
         assert_eq!(3, consumed);
     }
@@ -587,7 +592,7 @@ mod tests {
     fn lexer_consume_num_test_2() {
         let digits_2 = vec!['২', '৪', '৫', ' ', '২'];
 
-        let (val, consumed) = consume_num(&digits_2, 0);
+        let (val, consumed) = consume_num(&digits_2, 0, 1, "test.pakhi").unwrap();
         assert_eq!(245.0, val);
         assert_eq!(3, consumed);
     }
@@ -596,7 +601,7 @@ mod tests {
     fn lexer_consume_num_test_3() {
         let digits_3 = vec!['২', '৪', '৫', '.', '২', '৩', '৬'];
 
-        let (val, consumed) = consume_num(&digits_3, 0);
+        let (val, consumed) = consume_num(&digits_3, 0, 1, "test.pakhi").unwrap();
         assert_eq!(245.236, val);
         assert_eq!(7, consumed);
     }
@@ -605,7 +610,7 @@ mod tests {
     fn lexer_consume_num_test_4() {
         let digits_4 = vec!['-', '২', '৪', '৫', '.', '২', '৩', '৬'];
 
-        let (val, consumed) = consume_num(&digits_4, 0);
+        let (val, consumed) = consume_num(&digits_4, 0, 1, "test.pakhi").unwrap();
         assert_eq!(-245.236, val);
         assert_eq!(8, consumed);
     }
@@ -614,7 +619,7 @@ mod tests {
     fn lexer_consume_num_test_5() {
         let digits_5 = vec!['০'];
 
-        let (val, consumed) = consume_num(&digits_5, 0);
+        let (val, consumed) = consume_num(&digits_5, 0, 1, "test.pakhi").unwrap();
         assert_eq!(0.0, val);
         assert_eq!(1, consumed);
     }

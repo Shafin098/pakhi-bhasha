@@ -315,7 +315,7 @@ impl Parser {
             Ok(src) => {
                 let src_chars: Vec<char> = src.chars().collect();
                 let mut module_tokens = lexer::tokenize(src_chars,
-                                                        final_module_path.to_string());
+                                                        final_module_path.to_string())?;
                 // Must call this function before prepend
                 self.expand_dirname_constant(&mut module_tokens, final_module_path);
                 self.prepend_with_import_name(&mut module_tokens, prepend);

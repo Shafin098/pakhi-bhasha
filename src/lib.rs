@@ -14,7 +14,7 @@ pub fn start_pakhi<T: IO>(main_module_path: String, io: &mut T) -> Result<(), Pa
         Ok(src_string) => {
             // println!("{}", src_string);
             let src_chars: Vec<char> = src_string.chars().collect();
-            let tokens = lexer::tokenize(src_chars, main_module_path.clone());
+            let tokens = lexer::tokenize(src_chars, main_module_path.clone())?;
             //println!("{:#?}", tokens);
             let ast_tree = parser::parse(main_module_path, tokens)?;
             //println!("Ast : {:#?}", ast_tree);
