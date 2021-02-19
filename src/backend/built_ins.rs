@@ -34,22 +34,22 @@ impl BuiltInFunctionList {
     }
 
     // Converts DataType::Num to DataType::String
-    pub(crate) fn _to_string(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _to_string(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let number = arguments[0].clone();
 
             if let DataType::Num(n) = number {
                 let bn_num_string = BuiltInFunctionList::replace_en_with_bn_digit(n.to_string());
-                return DataType::String(bn_num_string)
+                return Ok(DataType::String(bn_num_string));
             } else {
-                panic!("Datatype must be Number for converting to string")
+                return Err("Datatype must be Number for converting to string".to_string());
             }
 
-        } else { panic!("Function requires one arguments") }
+        } else { return Err("Function requires one arguments".to_string()); }
     }
 
     // Converts DataType::String to DataType::Num
-    pub(crate) fn _to_num(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _to_num(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let string = arguments[0].clone();
 
@@ -57,14 +57,14 @@ impl BuiltInFunctionList {
                 let eng_num_string = BuiltInFunctionList::replace_bn_with_en_digit(bangla_num_string);
                 let convert_result = eng_num_string.parse::<f64>();
                 match convert_result {
-                    Ok(n) => return DataType::Num(n),
-                    Err(e) => panic!("{}", e.to_string()),
+                    Ok(n) => return Ok(DataType::Num(n)),
+                    Err(e) => return  Err(format!("{:?}", e)),
                 }
             } else {
-                panic!("Datatype must be Number for converting to string")
+                return Err(format!("Datatype must be Number for converting to string"));
             }
 
-        } else { panic!("Function requires one arguments") }
+        } else { return Err(format!("Function requires one arguments")); }
     }
 
     fn replace_bn_with_en_digit(bn_num_string: String) -> String {
@@ -117,7 +117,7 @@ impl BuiltInFunctionList {
         }
     }
 
-    pub(crate) fn _list_push(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _list_push(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> Result<DataType, String> {
         if arguments.len() == 2 {
             let list = arguments[0].clone();
 
@@ -126,7 +126,7 @@ impl BuiltInFunctionList {
                 let actual_list = lists.get_mut(index).unwrap();
                 actual_list.push(push_value);
             } else {
-                panic!("Datatype must be array to push value")
+                return Err(format!("Datatype must be array to push value"));
             }
 
         } else if arguments.len() == 3 {
@@ -140,23 +140,23 @@ impl BuiltInFunctionList {
                 if let DataType::Num(push_at_i_f) = push_at {
                     let push_at_u = push_at_i_f as usize;
                     actual_list.insert(push_at_u, push_value);
-                } else { panic!("Index must evaluate to number type"); }
+                } else { return Err(format!("Index must evaluate to number type")); }
 
-            } else { panic!("Datatype must be array to push value") }
+            } else { return Err(format!("Datatype must be array to push value")); }
 
-        } else { panic!("Function requires two arguments") }
+        } else { return Err(format!("Function requires two arguments")); }
 
-        return DataType::Nil;
+        return Ok(DataType::Nil);
     }
 
-    pub(crate) fn _list_pop(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _list_pop(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let list = arguments[0].clone();
 
             if let DataType::List(index) = list {
                 let actual_list = lists.get_mut(index).unwrap();
                 actual_list.pop();
-            } else { panic!("Datatype must be array to push value")}
+            } else { return Err(format!("Datatype must be array to push value")); }
 
         } else if arguments.len() == 2 {
             let list = arguments[0].clone();
@@ -170,49 +170,49 @@ impl BuiltInFunctionList {
                     actual_list.remove(pop_at_i);
                 }
 
-            } else { panic!("Datatype must be array to push value") }
+            } else { return Err(format!("Datatype must be array to push value")); }
 
-        } else { panic!("Function requires one argument") }
+        } else { return Err(format!("Function requires one argument")); }
 
-        return DataType::Nil;
+        return Ok(DataType::Nil);
     }
 
-    pub(crate) fn _list_len(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _list_len(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let list = arguments[0].clone();
 
             if let DataType::List(index) = list {
                 let actual_list = lists.get_mut(index).unwrap();
                 let length = actual_list.len();
-                DataType::Num(length as f64)
-            } else { panic!("Datatype must be list to get length")}
+                return Ok(DataType::Num(length as f64));
+            } else { return Err(format!("Datatype must be list to get length")); }
 
-        } else { panic!("Function requires one argument") }
+        } else { return Err(format!("Function requires one argument")); }
     }
 
-    pub(crate) fn _read_line(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _read_line(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 0 {
             let mut input = String::new();
             match std::io::stdin().read_line(&mut input) {
-                Ok(_) => return DataType::String(input.trim_end().into()),
-                Err(e) => panic!("{}", e),
+                Ok(_) => return Ok(DataType::String(input.trim_end().into())),
+                Err(e) => return Err(format!("{}", e)),
             }
-        } else { panic!("Function requires zero argument") }
+        } else { return Err(format!("Function requires zero argument")); }
     }
 
-    pub(crate) fn _error(arguments: Vec<DataType>) -> String {
+    pub(crate) fn _error(arguments: Vec<DataType>) -> Result<String, String> {
         if arguments.len() == 1 {
             let error = arguments[0].clone();
             match error {
-                DataType::String(err_message) => err_message,
-                _ => panic!("_এরর() functions arguments must be string"),
+                DataType::String(err_message) => return Ok(err_message),
+                _ => return Err(format!("_এরর() functions arguments must be string")),
             }
         } else {
-            panic!("_এরর() function expects one argument");
+            return Err(format!("_এরর() function expects one argument"));
         }
     }
 
-    pub(crate) fn _string_split(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _string_split(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> Result<DataType, String> {
         if arguments.len() == 2 {
             let string = arguments[0].clone();
             let split_by = arguments[1].clone();
@@ -228,16 +228,16 @@ impl BuiltInFunctionList {
                     let splitted_string: Vec<DataType> = splitted_string.iter()
                         .map(|s| DataType::String(String::from(s.clone()))).collect();
                     lists.push(splitted_string);
-                    return DataType::List(lists.len() - 1);
+                    return Ok(DataType::List(lists.len() - 1));
                 },
-                _ => panic!("_স্ট্রিং-স্প্লিট() functions arguments must be string"),
+                _ => return Err(format!("_স্ট্রিং-স্প্লিট()); functions arguments must be string")),
             }
         } else {
-            panic!("_স্ট্রিং-স্প্লিট() function expects two argument");
+            return Err(format!("_স্ট্রিং-স্প্লিট()); function expects two argument"));
         }
     }
 
-    pub(crate) fn _string_join(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> DataType {
+    pub(crate) fn _string_join(arguments: Vec<DataType>, lists: &mut Vec<Vec<DataType>>) -> Result<DataType, String> {
         if arguments.len() == 2 {
             let list_of_strings = arguments[0].clone();
             let join_by = arguments[1].clone();
@@ -248,22 +248,22 @@ impl BuiltInFunctionList {
                     for string in string_list {
                         if let DataType::String(string) = string.clone() {
                             strings.push(string);
-                        } else { panic!("_স্ট্রিং-জয়েন() functions only accepts list of strings"); }
+                        } else { return Err(format!("_স্ট্রিং-জয়েন()); functions only accepts list of strings")); }
                     }
                     let joined_string = strings.join(&join_by);
-                    return DataType::String(joined_string);
+                    return Ok(DataType::String(joined_string));
                 },
-                _ => panic!("_স্ট্রিং-জয়েন() functions arguments must be list and string"),
+                _ => return Err(format!("_স্ট্রিং-জয়েন()); functions arguments must be list and string")),
             }
         } else {
-            panic!("_স্ট্রিং-জয়েন() function expects two argument");
+            return Err(format!("_স্ট্রিং-জয়েন()); function expects two argument"));
         }
     }
 
-    pub(crate) fn _type(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _type(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let data = arguments[0].clone();
-            match data {
+            let d = match data {
                 DataType::Num(_) => DataType::String(String::from("_সংখ্যা")),
                 DataType::Bool(_) => DataType::String(String::from("_বুলিয়ান")),
                 DataType::String(_) => DataType::String(String::from("_স্ট্রিং")),
@@ -271,13 +271,14 @@ impl BuiltInFunctionList {
                 DataType::NamelessRecord(_) => DataType::String(String::from("_রেকর্ড")),
                 DataType::Function(_) => DataType::String(String::from("_ফাং")),
                 DataType::Nil => DataType::String(String::from("_শূন্য")),
-            }
+            };
+            return Ok(d);
         } else {
-            panic!("_টাইপ() function expects one argument");
+            return Err(format!("_টাইপ() function expects one argument"));
         }
     }
 
-    pub(crate) fn _read_file(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _read_file(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -285,18 +286,18 @@ impl BuiltInFunctionList {
                     let path = Path::new(&p);
                     let read_result = std::fs::read_to_string(path);
                     match read_result {
-                        Ok(content) => DataType::String(content),
-                        Err(e) => panic!("_রিড-ফাইল(): {}", e.to_string()),
+                        Ok(content) => Ok(DataType::String(content)),
+                        Err(e) => return Err(format!("_রিড-ফাইল());: {}", e.to_string())),
                     }
                 },
-                _ => panic!("_রিড-ফাইল() function's path argument must be of type string"),
+                _ => return Err(format!("_রিড-ফাইল());function's path argument must be of type string")),
             }
         } else {
-            panic!("_রিড-ফাইল() function expects one argument");
+            return Err(format!("_রিড-ফাইল() function expects one argument"));
         }
     }
 
-    pub(crate) fn _write_file(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _write_file(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 2 {
             let path_data = arguments[0].clone();
             let content_data = arguments[1].clone();
@@ -305,18 +306,18 @@ impl BuiltInFunctionList {
                     let path = Path::new(&p);
                     let write_result = std::fs::write(path, content);
                     match write_result {
-                        Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("_রাইট-ফাইল(): {}", e.to_string()),
+                        Ok(_) => return Ok(DataType::Bool(true)),
+                        Err(e) => return Err(format!("_রাইট-ফাইল(): {}", e.to_string())),
                     }
                 },
-                _ => panic!("_রাইট-ফাইল() function's both argument must be of type string"),
+                _ => return Err(format!("_রাইট-ফাইল() function's both argument must be of type string")),
             }
         } else {
-            panic!("_রাইট-ফাইল() function expects two argument");
+            return Err(format!("_রাইট-ফাইল() function expects two argument"));
         }
     }
 
-    pub(crate) fn _delete_file(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _delete_file(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -324,18 +325,18 @@ impl BuiltInFunctionList {
                     let path = Path::new(&p);
                     let delete_result = std::fs::remove_file(path);
                     match delete_result {
-                        Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("_ডিলিট-ফাইল(): {}", e.to_string()),
+                        Ok(_) => Ok(DataType::Bool(true)),
+                        Err(e) => return Err(format!("_ডিলিট-ফাইল(): {}", e.to_string())),
                     }
                 },
-                _ => panic!("_ডিলিট-ফাইল() function's argument must be of type string"),
+                _ => return Err(format!("_ডিলিট-ফাইল() function's argument must be of type string")),
             }
         } else {
-            panic!("_ডিলিট-ফাইল() function expects one argument");
+            return Err(format!("_ডিলিট-ফাইল() function expects one argument"));
         }
     }
 
-    pub(crate) fn _create_dir(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _create_dir(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -343,18 +344,18 @@ impl BuiltInFunctionList {
                     let path = Path::new(&p);
                     let create_dir_result = std::fs::create_dir_all(path);
                     match create_dir_result {
-                        Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("_ক্রিয়েট-ডাইরেক্টরি(): {}", e.to_string()),
+                        Ok(_) => return Ok(DataType::Bool(true)),
+                        Err(e) => return Err(format!("_ক্রিয়েট-ডাইরেক্টরি(): {}", e.to_string())),
                     }
                 },
-                _ => panic!("_ক্রিয়েট-ডাইরেক্টরি() function's argument must be of type string"),
+                _ => return Err(format!("_ক্রিয়েট-ডাইরেক্টরি() function's argument must be of type string")),
             }
         } else {
-            panic!("_ক্রিয়েট-ডাইরেক্টরি() function expects one argument");
+            return Err(format!("_ক্রিয়েট-ডাইরেক্টরি() function expects one argument"));
         }
     }
 
-    pub(crate) fn _read_dir(arguments: Vec<DataType>) -> Vec<String> {
+    pub(crate) fn _read_dir(arguments: Vec<DataType>) -> Result<Vec<String>, String> {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -368,19 +369,19 @@ impl BuiltInFunctionList {
                                 let file_dir_name =  path.unwrap().file_name().to_str().unwrap().to_string();
                                 all_files_dirs.push(file_dir_name);
                             }
-                            all_files_dirs
+                            return Ok(all_files_dirs);
                         },
-                        Err(e) => panic!("_রিড-ডাইরেক্টরি(): {}, path: {}", e.to_string(), path.display()),
+                        Err(e) => return Err(format!("_রিড-ডাইরেক্টরি(): {}, path: {}", e.to_string(), path.display())),
                     }
                 },
-                _ => panic!("_রিড-ডাইরেক্টরি() function's argument must be of type string"),
+                _ => return Err(format!("_রিড-ডাইরেক্টরি() function's argument must be of type string")),
             }
         } else {
-            panic!("_রিড-ডাইরেক্টরি() function expects one argument");
+            return Err(format!("_রিড-ডাইরেক্টরি() function expects one argument"));
         }
     }
 
-    pub(crate) fn _delete_dir(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _delete_dir(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -388,18 +389,18 @@ impl BuiltInFunctionList {
                     let path = Path::new(&p);
                     let delete_result = std::fs::remove_dir_all(path);
                     match delete_result {
-                        Ok(_) => DataType::Bool(true),
-                        Err(e) => panic!("_ডিলিট-ডাইরেক্টরি(): {}", e.to_string()),
+                        Ok(_) => return Ok(DataType::Bool(true)),
+                        Err(e) => return Err(format!("_ডিলিট-ডাইরেক্টরি(): {}", e.to_string()))
                     }
                 },
-                _ => panic!("_ডিলিট-ডাইরেক্টরি() function's argument must be of type string"),
+                _ => return Err(format!("_ডিলিট-ডাইরেক্টরি() function's argument must be of type string")),
             }
         } else {
-            panic!("_ডিলিট-ডাইরেক্টরি() function expects one argument");
+            return Err(format!("_ডিলিট-ডাইরেক্টরি() function expects one argument"));
         }
     }
 
-    pub(crate) fn _file_or_dir(arguments: Vec<DataType>) -> DataType {
+    pub(crate) fn _file_or_dir(arguments: Vec<DataType>) -> Result<DataType, String> {
         if arguments.len() == 1 {
             let path_data = arguments[0].clone();
             match path_data {
@@ -409,17 +410,17 @@ impl BuiltInFunctionList {
                     match result {
                         Ok(m) => {
                             match m.is_file() {
-                                true => DataType::String("ফাইল".to_string()),
-                                false => DataType::String("ডাইরেক্টরি".to_string())
+                                true => return Ok(DataType::String("ফাইল".to_string())),
+                                false => return Ok(DataType::String("ডাইরেক্টরি".to_string())),
                             }
                         },
-                        Err(e) => panic!("_ফাইল-নাকি-ডাইরেক্টরি(): {}, path: {}", e.to_string(), path.display()),
+                        Err(e) => return Err(format!("_ফাইল-নাকি-ডাইরেক্টরি(): {}, path: {}", e.to_string(), path.display())),
                     }
                 },
-                _ => panic!("_ফাইল-নাকি-ডাইরেক্টরি() function's argument must be of type string"),
+                _ => return Err(format!("_ফাইল-নাকি-ডাইরেক্টরি() function's argument must be of type string")),
             }
         } else {
-            panic!("_ফাইল-নাকি-ডাইরেক্টরি() function expects one argument");
+            return Err(format!("_ফাইল-নাকি-ডাইরেক্টরি() function expects one argument"));
         }
     }
 }
