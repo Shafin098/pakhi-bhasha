@@ -879,36 +879,169 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
         }
         // Finding out which built-in function and executing that accordingly
         match self.built_in_functions.get_name(&func_token.lexeme).as_str() {
-            "_স্ট্রিং" => return Ok(BuiltInFunctionList::_to_string(evaluated_arguments)),
-            "_সংখ্যা" => return Ok(BuiltInFunctionList::_to_num(evaluated_arguments)),
-            "_লিস্ট-পুশ" => return Ok(BuiltInFunctionList::_list_push(evaluated_arguments, &mut self.lists)),
-            "_লিস্ট-পপ" => return Ok(BuiltInFunctionList::_list_pop(evaluated_arguments, &mut self.lists)),
-            "_লিস্ট-লেন" => return Ok(BuiltInFunctionList::_list_len(evaluated_arguments, &mut self.lists)),
-            "_রিড-লাইন" => return Ok(BuiltInFunctionList::_read_line(evaluated_arguments)),
-            "_এরর" => {
-                let error = BuiltInFunctionList::_error(evaluated_arguments);
-                let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
-                return Err(RuntimeError(line, file_name, format!("{}", error)));
+            "_স্ট্রিং" => {
+                match BuiltInFunctionList::_to_string(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
             },
-            "_স্ট্রিং-স্প্লিট" => return Ok(BuiltInFunctionList::_string_split(evaluated_arguments, &mut self.lists)),
-            "_স্ট্রিং-জয়েন" => return Ok(BuiltInFunctionList::_string_join(evaluated_arguments, &mut self.lists)),
-            "_টাইপ" => return Ok(BuiltInFunctionList::_type(evaluated_arguments)),
-            "_রিড-ফাইল" => return Ok(BuiltInFunctionList::_read_file(evaluated_arguments)),
-            "_রাইট-ফাইল" => return Ok(BuiltInFunctionList::_write_file(evaluated_arguments)),
-            "_ডিলিট-ফাইল" => return Ok(BuiltInFunctionList::_delete_file(evaluated_arguments)),
-            "_নতুন-ডাইরেক্টরি" => return Ok(BuiltInFunctionList::_create_dir(evaluated_arguments)),
+            "_সংখ্যা" => {
+                match  BuiltInFunctionList::_to_num(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_লিস্ট-পুশ" => {
+                match BuiltInFunctionList::_list_push(evaluated_arguments, &mut self.lists) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_লিস্ট-পপ" => {
+                match BuiltInFunctionList::_list_pop(evaluated_arguments, &mut self.lists) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_লিস্ট-লেন" => {
+                match BuiltInFunctionList::_list_len(evaluated_arguments, &mut self.lists) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_রিড-লাইন" => {
+                match BuiltInFunctionList::_read_line(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_এরর" => {
+                let call_result = BuiltInFunctionList::_error(evaluated_arguments);
+                let err_m: String;
+                match call_result {
+                    Ok(error) => err_m = error,
+                    Err(error) => err_m = error,
+                }
+                let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                return Err(RuntimeError(line, file_name, err_m));
+            },
+            "_স্ট্রিং-স্প্লিট" => {
+                match BuiltInFunctionList::_string_split(evaluated_arguments, &mut self.lists) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_স্ট্রিং-জয়েন" => {
+                match BuiltInFunctionList::_string_join(evaluated_arguments, &mut self.lists) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_টাইপ" => {
+                match BuiltInFunctionList::_type(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_রিড-ফাইল" => {
+                match BuiltInFunctionList::_read_file(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_রাইট-ফাইল" => {
+                match BuiltInFunctionList::_write_file(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_ডিলিট-ফাইল" => {
+                match BuiltInFunctionList::_delete_file(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            }
+            "_নতুন-ডাইরেক্টরি" => {
+                match BuiltInFunctionList::_create_dir(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            }
             "_রিড-ডাইরেক্টরি" => {
                 // Files also could be dir
-                let all_file_names_in_dir = BuiltInFunctionList::_read_dir(evaluated_arguments);
-                // Converting vec<string> to vec<datatype>
-                let all_file_names = all_file_names_in_dir.iter()
-                    .map(|name| DataType::String(name.clone())).collect();
+                let call_result = BuiltInFunctionList::_read_dir(evaluated_arguments);
+                match call_result {
+                    Ok(all_file_names_in_dir) => {
+                        // Converting vec<string> to vec<datatype>
+                        let all_file_names = all_file_names_in_dir.iter()
+                            .map(|name| DataType::String(name.clone())).collect();
 
-                let pakhi_list_data = self.create_new_list_datatype(all_file_names);
-                return Ok(pakhi_list_data);
+                        let pakhi_list_data = self.create_new_list_datatype(all_file_names);
+                        return Ok(pakhi_list_data);
+                    },
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
             },
-            "_ডিলিট-ডাইরেক্টরি" => return Ok(BuiltInFunctionList::_delete_dir(evaluated_arguments)),
-            "_ফাইল-নাকি-ডাইরেক্টরি" => return Ok(BuiltInFunctionList::_file_or_dir(evaluated_arguments)),
+            "_ডিলিট-ডাইরেক্টরি" => {
+                match BuiltInFunctionList::_delete_dir(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            },
+            "_ফাইল-নাকি-ডাইরেক্টরি" => {
+                match BuiltInFunctionList::_file_or_dir(evaluated_arguments) {
+                    Ok(result_data) => Ok(result_data),
+                    Err(err) => {
+                        let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
+                        return Err(RuntimeError(line, file_name, err));
+                    }
+                }
+            }
             built_in_function_name => {
                 return Err(RuntimeError(func_token.line, func_token.clone().src_file_path,
                           format!("Built-in function: {} not defined", built_in_function_name)));
