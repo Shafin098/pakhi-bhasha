@@ -117,6 +117,7 @@ Every pakhi source file is a module. Module can be imported with realtive path o
 #### <a href="#">Builtin functions and constants</a>
 ***
 * [_ডাইরেক্টরি](user_docs/built-in_functions_and_constants.md)
+* [_প্ল্যাটফর্ম](user_docs/built-in_functions_and_constants.md)
 * [_রিড-লাইন()](user_docs/built-in_functions_and_constants.md)
 * [_স্ট্রিং(মান)](user_docs/built-in_functions_and_constants.md)
 * [_সংখ্যা(মান)](user_docs/built-in_functions_and_constants.md)

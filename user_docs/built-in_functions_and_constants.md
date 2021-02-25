@@ -8,6 +8,19 @@ _রিড-ফাইল("../dir/file.txt");
 # To fix previous error relative path must be concatenated with _ডাইরেক্টরি constant #
 _রিড-ফাইল(_ডাইরেক্টরি + "../dir/file.txt");
 ```
+### _প্ল্যাটফর্ম
+###### *it will expand to user's os name*
+###### *Possible values are*
+- linux
+- macos
+- ios
+- freebsd
+- dragonfly
+- netbsd
+- openbsd
+- solaris
+- android
+- windows
 
 #### <a href="">Builtin functions</a>
 ***
