@@ -44,7 +44,7 @@ pub struct Interpreter<'a, T: IO> {
     statements: Vec<parser::Stmt>,
     loops: Vec<LoopEnv>,
     return_addrs: Vec<usize>,
-    envs: Vec<HashMap<String, Option<DataType>>>,
+    scopes: Vec<HashMap<String, Option<DataType>>>,
     previous_if_was_executed: Vec<bool>,
     lists: Vec<Vec<DataType>>,
     // free list tracks which list indexes are free to be re-used for allocating as list datatype
@@ -62,12 +62,27 @@ pub struct Interpreter<'a, T: IO> {
 
 impl<'a, T: 'a + IO> Interpreter<'a, T> {
     pub fn new(statements: Vec<parser::Stmt>, io: &mut T) -> Interpreter<T> {
+        let mut root_scope : HashMap<String, Option<DataType>>= HashMap::new();
+        // Possible os value
+        // linux
+        // macos
+        // ios
+        // freebsd
+        // dragonfly
+        // netbsd
+        // openbsd
+        // solaris
+        // android
+        // windows
+        let os = std::env::consts::OS.to_string();
+        root_scope.insert("_প্ল্যাটফর্ম".to_string(), Some(DataType::String(os)));
+
         Interpreter {
             current: 0,
             statements,
             loops: Vec::new(),
             return_addrs: Vec::new(),
-            envs: vec![HashMap::new()],
+            scopes: vec![root_scope],
             previous_if_was_executed: Vec::new(),
             lists: Vec::new(),
             free_lists: Vec::new(),
@@ -86,10 +101,10 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
             }
             self.interpret()?;
             if self.total_allocated_object_count >= 1000 {
-                let mut gc = mark_sweep::GC::new(&mut self.envs, &mut self.lists,
-                                             &mut self.free_lists,
-                                             &mut self.nameless_records,
-                                             &mut self.free_nameless_records);
+                let mut gc = mark_sweep::GC::new(&mut self.scopes, &mut self.lists,
+                                                 &mut self.free_lists,
+                                                 &mut self.nameless_records,
+                                                 &mut self.free_nameless_records);
                 gc.collect_garbage();
                 self.total_allocated_object_count = 0;
             }
@@ -115,15 +130,15 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
                 self.current += 1;
 
                 // saving loop start to reuse in continue statement
-                self.loops.push(LoopEnv { start: self.current, total_envs_at_loop_creation: self.envs.len()});
+                self.loops.push(LoopEnv { start: self.current, total_envs_at_loop_creation: self.scopes.len()});
 
             },
             parser::Stmt::Continue(_, _) => {
                 // destroying envs that was created inside loop
                 let last_loop_env_index = self.loops.len() - 1;
-                let total_envs_created_inside_loop = self.envs.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
+                let total_envs_created_inside_loop = self.scopes.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
                 for _ in 0..total_envs_created_inside_loop {
-                    self.envs.pop();
+                    self.scopes.pop();
                 }
 
                 let loop_start = self.loops[last_loop_env_index].start;
@@ -137,9 +152,9 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
                 if self.loops.len() > 0 {
                     // destroying all envs that was created inside loop
                     let last_loop_env_index = self.loops.len() - 1;
-                    let total_envs_created_inside_loop = self.envs.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
+                    let total_envs_created_inside_loop = self.scopes.len() - self.loops[last_loop_env_index].total_envs_at_loop_creation;
                     for _ in 0..total_envs_created_inside_loop {
-                        self.envs.pop();
+                        self.scopes.pop();
                     }
                 }
 
@@ -168,13 +183,13 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
             parser::Stmt::BlockStart(_, _) => {
                 self.current += 1;
                 // creating new scope
-                self.envs.push(HashMap::new());
+                self.scopes.push(HashMap::new());
             },
             parser::Stmt::BlockEnd(_, _) => {
                 self.current += 1;
                 // BlockEnd means all statements in this blocks scope were interpreted
                 // so destroying scope created by Stmt::BlockStart
-                self.envs.pop();
+                self.scopes.pop();
             }
             _ => {
                 let (line, file_name) = self.extract_err_meta_stmt(self.current)?;
@@ -327,13 +342,13 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
             Some(expr) => {
                 let init_value = self.interpret_expr(expr)?;
 
-                let env_i = self.envs.len() - 1;
-                let current_env = &mut self.envs[env_i];
+                let env_i = self.scopes.len() - 1;
+                let current_env = &mut self.scopes[env_i];
                 current_env.insert(var_key, Some(init_value));
             },
             _ => {
-                let env_i = self.envs.len() - 1;
-                let current_env = &mut self.envs[env_i];
+                let env_i = self.scopes.len() - 1;
+                let current_env = &mut self.scopes[env_i];
                 current_env.insert(var_key, Some(DataType::Nil));
             },
         }
@@ -352,7 +367,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
         if var_found_at_env_index >= 0 {
             if assign_stmt.indexes.is_empty() {
                 // only simple variable assignment
-                self.envs[var_found_at_env_index as usize].insert(var_key, Some(init_value));
+                self.scopes[var_found_at_env_index as usize].insert(var_key, Some(init_value));
             } else {
                 // assignment to element in a list or record
                 self.reassign_to_list_or_record(assign_stmt, var_key, var_found_at_env_index, init_value)?;
@@ -600,9 +615,9 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     fn find_var_env_index(&mut self, var_key: String, init_value: Option<parser::Expr>) -> i32 {
         // if var was found at env returns its scope index
         // if not found return any integer
-        let mut var_found_at_env_index: i32 = (self.envs.len() - 1) as i32;
+        let mut var_found_at_env_index: i32 = (self.scopes.len() - 1) as i32;
 
-        for env in self.envs.iter().rev() {
+        for env in self.scopes.iter().rev() {
             if env.contains_key(&var_key) && init_value.is_some() {
                 break;
             } else {
@@ -614,7 +629,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     }
 
     fn get_var_from_env(&mut self, var_name: &str, env_index: usize) -> Option<DataType> {
-        return self.envs[env_index].get(var_name).unwrap().clone();
+        return self.scopes[env_index].get(var_name).unwrap().clone();
     }
 
     fn evaluate_all_indexes(&mut self, index_exprs: Vec<parser::Expr>) -> Result<Vec<Index>, PakhiErr> {
@@ -672,8 +687,8 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
                         args: func_args_name,
                     };
 
-                    let current_env_i = self.envs.len() - 1;
-                    self.envs[current_env_i].insert(func_name.clone(), Some(DataType::Function(func)));
+                    let current_env_i = self.scopes.len() - 1;
+                    self.scopes[current_env_i].insert(func_name.clone(), Some(DataType::Function(func)));
                 },
                 _ => {
                     return Err(RuntimeError(line, file_name, "Cannot interpret function definition".to_string()));
@@ -1051,7 +1066,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     }
 
     fn interpret_func_call_expr(&mut self, f: parser::FunctionCall) -> Result<DataType, PakhiErr> {
-        let env_count_before_fn_call = self.envs.len();
+        let env_count_before_fn_call = self.scopes.len();
 
         match *f.expr.clone() {
             parser::Expr::Primary(parser::Primary::Var(func_token), _, _) => {
@@ -1085,7 +1100,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
                         }
 
                         // creating root_envs
-                        self.envs.push(root_env);
+                        self.scopes.push(root_env);
 
                         self.return_addrs.push(self.current);
 
@@ -1127,12 +1142,12 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
             let return_val = self.interpret_expr(expr);
             self.current = self.return_addrs.pop().unwrap();
 
-            let env_count_after_fn_call = self.envs.len();
+            let env_count_after_fn_call = self.scopes.len();
             let envs_created_inside_fn = env_count_after_fn_call - env_count_before_fn_call;
             for _ in 0..envs_created_inside_fn {
                 // return can also happen mid function without reaching blockEnd '}' statement
                 // so half used env must be destroyed manually
-                self.envs.pop();
+                self.scopes.pop();
             }
 
             return return_val;
@@ -1369,7 +1384,7 @@ impl<'a, T: 'a + IO> Interpreter<'a, T> {
     fn interpret_var(&mut self, v: Token) -> Result<DataType, PakhiErr> {
         let var_key: String = v.lexeme.clone().into_iter().collect();
 
-        for env in self.envs.iter_mut().rev() {
+        for env in self.scopes.iter_mut().rev() {
             let expr_result = env.get(&*var_key);
             if expr_result.is_some() {
                 match expr_result.unwrap() {

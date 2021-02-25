@@ -563,3 +563,15 @@ fn built_in_fn_to_num() {
         panic!("{:?}", err);
     }
 }
+
+#[test]
+fn built_in_const_platform() {
+    let ast = src_to_ast(vec![
+        r#"দেখাও _প্ল্যাটফর্ম;"#,
+    ]);
+    let mut mock_io: MockIO = MockIO::new();
+    mock_io.expect_println(std::env::consts::OS);
+    if let Err(err) = run_assert_all_true(ast, mock_io) {
+        panic!("{:?}", err);
+    }
+}
